@@ -1,0 +1,6 @@
+faostat
+psycopg2-binary 
+sqlalchemy 
+pulp 
+pandas
+pika

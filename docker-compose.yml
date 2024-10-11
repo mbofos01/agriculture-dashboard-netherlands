@@ -1,0 +1,115 @@
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management # RabbitMQ with management interface
+    ports:
+      - "5672:5672" # RabbitMQ port for messaging
+      - "15672:15672" # Management interface port (optional)
+    healthcheck:
+      # Check if RabbitMQ is ready to accept connections
+      test: [ "CMD", "rabbitmq-diagnostics", "status" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    environment:
+      # Disable logging
+      RABBITMQ_LOGS: "/dev/null"
+      RABBITMQ_LOG_LEVEL: "none"
+
+  database:
+    image: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=student
+      - POSTGRES_PASSWORD=infomdss
+      - POSTGRES_DB=dashboard
+    command: [ "postgres", "-c", "logging_collector=off", "-c", "log_statement=none", "-c", "log_min_messages=fatal" ]
+    volumes:
+      - db_dashboard-data:/var/lib/postgresql/data/
+    container_name: database
+
+  extract:
+    container_name: extract
+    build:
+      context: ./ETL/extract # Directory containing the Python Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy # Wait for RabbitMQ to be ready
+      load:
+        condition: service_started # Wait for the load service to start
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - EXTRACT_SERVICE_NAME=extract
+      - TRANSFORM_SERVICE_NAME=transform
+      - LOAD_SERVICE_NAME=load
+      - LOAD_QUEUE=load_queue
+      - TRANSFORM_QUEUE=transform_queue
+    restart: on-failure # Restart the container only on failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5 # Restart only 5 times if it fails
+    links:
+      - rabbitmq
+    volumes:
+      - ./data:/data
+      - ./communication/:/app/communication
+
+  transform:
+    container_name: transform
+    build:
+      context: ./ETL/transform # Directory containing the Python Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy # Wait for RabbitMQ to be ready
+      load:
+        condition: service_started # Wait for the load service to start
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - EXTRACT_SERVICE_NAME=extract
+      - TRANSFORM_SERVICE_NAME=transform
+      - LOAD_SERVICE_NAME=load
+      - LOAD_QUEUE=load_queue
+      - TRANSFORM_QUEUE=transform_queue
+    restart: on-failure # Restart the container only on failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5 # Restart only 5 times if it fails
+    links:
+      - rabbitmq
+    volumes:
+      - ./data:/data
+      - ./communication/:/app/communication
+
+  load:
+    container_name: load
+    build:
+      context: ./ETL/load # Directory containing the Python Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy # Wait for RabbitMQ to be ready
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - EXTRACT_SERVICE_NAME=extract
+      - TRANSFORM_SERVICE_NAME=transform
+      - LOAD_SERVICE_NAME=load
+      - LOAD_QUEUE=load_queue
+      - TRANSFORM_QUEUE=transform_queue
+    restart: on-failure # Restart the container only on failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5 # Restart only 5 times if it fails
+    links:
+      - rabbitmq
+    volumes:
+      - ./data:/data
+      - ./communication/:/app/communication
+
+volumes:
+  data:
+  communication:
+  db_dashboard-data:
