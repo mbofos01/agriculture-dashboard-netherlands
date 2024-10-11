@@ -18,8 +18,8 @@
     E --> |depends on| T
     T --> |depends on| L
     
-    E -->|share| S[Shared Space]
-    T -->|share| S[Shared Space]
+    E -->|shares| S[Shared Space]
+    T -->|shares| S[Shared Space]
 
 
     subgraph Database
@@ -27,7 +27,7 @@
     end
 
     L -->|connects to| D
-    L -->|share| S[Shared Space]
+    L -->|shares| S[Shared Space]
 
     style R fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
     style E fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
