@@ -37,7 +37,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy # Wait for RabbitMQ to be ready
-      load:
+      transform:
         condition: service_started # Wait for the load service to start
     environment:
       - RABBITMQ_HOST=rabbitmq
