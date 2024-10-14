@@ -80,6 +80,24 @@ def table_exists(engine, table_name):
     return table_name in inspector.get_table_names()
 
 
+def get_table_row_count(engine, table_name):
+    '''
+    Get the number of rows in a table.
+
+    Parameters:
+    - engine: The database engine
+    - table_name: The name of the table to count rows
+
+    Returns:
+    - The number of rows in the table
+    '''
+    with engine.connect() as connection:
+        result = connection.execute(
+            text(f'SELECT COUNT(*) FROM "{table_name}"'))
+        row_count = result.scalar()
+    return row_count
+
+
 latest = get_latest_dataset()
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
@@ -95,18 +113,20 @@ AREA_TUPLES = faostat.get_par(CODE, 'area')
 ELEMENT_TUPLES = faostat.get_par(CODE, 'element')
 ITEM_TUPLES = faostat.get_par(CODE, 'item')
 
-MY_PARAMS = {'area': AREA_TUPLES[NETHERLANDS], 'element': [ELEMENT_TUPLES[PRODUCTION_YIELD]], 'item': ITEM_TUPLES[CROPS_PRIMARY]}
+MY_PARAMS = {'area': AREA_TUPLES[NETHERLANDS], 'element': [
+    ELEMENT_TUPLES[PRODUCTION_YIELD]], 'item': ITEM_TUPLES[CROPS_PRIMARY]}
 DATA = faostat.get_data_df(CODE, pars=MY_PARAMS, strval=False)
 
+LATEST_INDEX = get_table_row_count(engine, 'QCL')
 
 # Check if new data is available
 if DATA is None or DATA.empty:
     print(f" [{INDICATOR}] No FAOSTAT data available")
-elif DATA.shape[0] == get_latest_index():
+elif DATA.shape[0] == LATEST_INDEX:
     print(f" [{INDICATOR}] No new FAOSTAT data available")
-elif DATA.shape[0] < get_latest_index():
+elif DATA.shape[0] < LATEST_INDEX:
     print(f" [{INDICATOR}] FAOSTAT data is missing")
-elif DATA.shape[0] > get_latest_index():
+elif DATA.shape[0] > LATEST_INDEX:
     print(f" [{INDICATOR}] New FAOSTAT data available")
     TIMESTAMP = datetime.now().strftime('%Y_%m_%d')
     DATA.to_csv(f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', index=False)

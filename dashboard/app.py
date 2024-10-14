@@ -575,11 +575,12 @@ def rabbitmq_consumer():
 
     print(" [S] Starting RabbitMQ consumer...")
     # Non-blocking I/O loop
-    try:
-        connection.ioloop.start()
-    except Exception as e:
-        print(f" [S] Error in consumer: {e}")
-        connection.ioloop.stop()
+    while True:
+        try:
+            connection.ioloop.start()
+        except Exception as e:
+            print(f" [S] Error in consumer: {e}")
+            connection.ioloop.stop()
 
 
 # Run the app

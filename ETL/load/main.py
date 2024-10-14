@@ -41,7 +41,7 @@ def load_data_to_database(ch, method, properties, body):
         data_frame.to_sql("QCL", engine, if_exists="replace", index=True)
         print(f" [{INDICATOR}] Data Loaded Succesfully")
 
-        wake_up_service(message="Data loaded successfully",
+        wake_up_service(message="Data updated successfully",
                         service_name_to=SERVER_SERVICE_NAME,
                         service_name_from=LOAD_SERVICE_NAME,
                         queue_name=SERVER_QUEUE)
