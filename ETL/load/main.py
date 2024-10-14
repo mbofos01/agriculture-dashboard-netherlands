@@ -1,7 +1,8 @@
 from communication.communicate import wake_up_service, wait_for_service
 import os
 import pandas as pd
-from sqlalchemy import create_engine, text, inspect, Table
+from sqlalchemy import create_engine, text
+import json
 
 EXTRACT_SERVICE_NAME = os.getenv('EXTRACT_SERVICE_NAME', 'extract')
 SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
@@ -29,7 +30,9 @@ def load_data_to_database(ch, method, properties, body):
     - None
     '''
     try:
-        active_file_name = body.decode()
+        payload = json.loads(body)
+        active_file_name = payload["file_name"]
+        active_dataset = payload["dataset"]
         print(f" [{INDICATOR}] Received {active_file_name}")
         print(f" [{INDICATOR}] Loading data...")
         with engine.connect() as conn:
@@ -41,7 +44,9 @@ def load_data_to_database(ch, method, properties, body):
         data_frame.to_sql("QCL", engine, if_exists="replace", index=True)
         print(f" [{INDICATOR}] Data Loaded Succesfully")
 
-        wake_up_service(message="Data updated successfully",
+        payload = json.dumps(
+            {'status': "Data updated successfully", 'file_name': active_file_name, 'dataset': active_dataset})
+        wake_up_service(message=payload,
                         service_name_to=SERVER_SERVICE_NAME,
                         service_name_from=LOAD_SERVICE_NAME,
                         queue_name=SERVER_QUEUE)

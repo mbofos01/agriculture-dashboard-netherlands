@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 from sqlalchemy import create_engine, text, inspect, Table
 from communication.communicate import wake_up_service
+import json
 
 # These variables are used to fetch data
 CODE = 'QCL'
@@ -104,8 +105,10 @@ engine = create_engine(
 
 if table_exists(engine, 'QCL') == False and latest is not None:
     print(f" [{INDICATOR}] Table does not exist, but data is available locally")
+    payload = json.dumps(
+        {'file_name': "/data/" + latest, 'dataset': 'QCL'})
     wake_up_service(
-        message="/data/" + latest, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
+        message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
     exit(1)
 
 # Define the details you want to fetch
@@ -130,8 +133,10 @@ elif DATA.shape[0] > LATEST_INDEX:
     print(f" [{INDICATOR}] New FAOSTAT data available")
     TIMESTAMP = datetime.now().strftime('%Y_%m_%d')
     DATA.to_csv(f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', index=False)
+    payload = json.dumps(
+        {'file_name': f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', 'dataset': 'QCL'})
     wake_up_service(
-        message=f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
+        message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
 else:
     print(f" [{INDICATOR}] Something went wrong with FAOSTAT data extraction")
 
