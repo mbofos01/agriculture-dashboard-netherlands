@@ -1,0 +1,17 @@
+geopy
+openmeteo-requests
+requests-cache 
+retry-requests
+scipy
+pandas
+plotly 
+dash
+scikit-learn
+dash-bootstrap-components
+pandas 
+numpy 
+scipy 
+dash 
+dash-bootstrap-components
+dash-daq
+IPython

@@ -109,6 +109,17 @@ services:
       - ./data:/data
       - ./communication/:/app/communication
 
+  server:
+    container_name: dashboard
+    build:
+      context: ./dashboard # Directory containing the Python Dockerfile
+    depends_on:
+      database:
+        condition: service_started
+    ports:
+      - 8050:8050
+    volumes:
+      - ./data:/data
 volumes:
   data:
   communication:
