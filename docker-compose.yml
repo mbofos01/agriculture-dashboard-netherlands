@@ -44,8 +44,10 @@ services:
       - EXTRACT_SERVICE_NAME=extract
       - TRANSFORM_SERVICE_NAME=transform
       - LOAD_SERVICE_NAME=load
+      - SERVER_SERVICE_NAME=server
       - LOAD_QUEUE=load_queue
       - TRANSFORM_QUEUE=transform_queue
+      - SERVER_QUEUE=server_queue
     restart: on-failure # Restart the container only on failure
     deploy:
       restart_policy:
@@ -71,8 +73,10 @@ services:
       - EXTRACT_SERVICE_NAME=extract
       - TRANSFORM_SERVICE_NAME=transform
       - LOAD_SERVICE_NAME=load
+      - SERVER_SERVICE_NAME=server
       - LOAD_QUEUE=load_queue
       - TRANSFORM_QUEUE=transform_queue
+      - SERVER_QUEUE=server_queue
     restart: on-failure # Restart the container only on failure
     deploy:
       restart_policy:
@@ -96,8 +100,10 @@ services:
       - EXTRACT_SERVICE_NAME=extract
       - TRANSFORM_SERVICE_NAME=transform
       - LOAD_SERVICE_NAME=load
+      - SERVER_SERVICE_NAME=server
       - LOAD_QUEUE=load_queue
       - TRANSFORM_QUEUE=transform_queue
+      - SERVER_QUEUE=server_queue
     restart: on-failure # Restart the container only on failure
     deploy:
       restart_policy:
@@ -114,12 +120,30 @@ services:
     build:
       context: ./dashboard # Directory containing the Python Dockerfile
     depends_on:
+      rabbitmq:
+        condition: service_healthy # Wait for RabbitMQ to be ready
       database:
         condition: service_started
+      load:
+        condition: service_started
+      transform:
+        condition: service_started
+      extract:
+        condition: service_started
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - EXTRACT_SERVICE_NAME=extract
+      - TRANSFORM_SERVICE_NAME=transform
+      - LOAD_SERVICE_NAME=load
+      - SERVER_SERVICE_NAME=server
+      - LOAD_QUEUE=load_queue
+      - TRANSFORM_QUEUE=transform_queue
+      - SERVER_QUEUE=server_queue
     ports:
       - 8050:8050
     volumes:
       - ./data:/data
+
 volumes:
   data:
   communication:

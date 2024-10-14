@@ -4,10 +4,12 @@ import pandas as pd
 from sqlalchemy import create_engine, text, inspect, Table
 
 EXTRACT_SERVICE_NAME = os.getenv('EXTRACT_SERVICE_NAME', 'extract')
+SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
 LOAD_SERVICE_NAME = os.getenv('LOAD_SERVICE_NAME', 'load')
 INDICATOR = LOAD_SERVICE_NAME.upper()[0]
 TRANSFORM_QUEUE = os.getenv('TRANSFORM_QUEUE', 'transform_queue')
 LOADING_QUEUE = os.getenv('LOADING_QUEUE', 'loading_queue')
+SERVER_QUEUE = os.getenv('SERVER_QUEUE', 'server_queue')
 
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
@@ -38,6 +40,11 @@ def load_data_to_database(ch, method, properties, body):
 
         data_frame.to_sql("QCL", engine, if_exists="replace", index=True)
         print(f" [{INDICATOR}] Data Loaded Succesfully")
+
+        wake_up_service(message="Data loaded successfully",
+                        service_name_to=SERVER_SERVICE_NAME,
+                        service_name_from=LOAD_SERVICE_NAME,
+                        queue_name=SERVER_QUEUE)
     except Exception as e:
         print(f" [{INDICATOR}] Something went wrong! {e}")
 

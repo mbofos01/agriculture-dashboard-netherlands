@@ -10,6 +10,8 @@ CODE = 'QCL'
 NETHERLANDS = 'Netherlands (Kingdom of the)'
 PREFIX = 'netherlands_qcl_data'
 ROOT_DIR = "/data"
+PRODUCTION_YIELD = 'Production Quantity'
+CROPS_PRIMARY = 'Crops, primary > (List)'
 
 # These variables are used to communicate with other services
 EXTRACT_SERVICE_NAME = os.getenv('EXTRACT_SERVICE_NAME', 'extract')
@@ -90,8 +92,11 @@ if table_exists(engine, 'QCL') == False and latest is not None:
 
 # Define the details you want to fetch
 AREA_TUPLES = faostat.get_par(CODE, 'area')
-MY_AREA = {'area': AREA_TUPLES[NETHERLANDS]}
-DATA = faostat.get_data_df(CODE, pars=MY_AREA, strval=False)
+ELEMENT_TUPLES = faostat.get_par(CODE, 'element')
+ITEM_TUPLES = faostat.get_par(CODE, 'item')
+
+MY_PARAMS = {'area': AREA_TUPLES[NETHERLANDS], 'element': [ELEMENT_TUPLES[PRODUCTION_YIELD]], 'item': ITEM_TUPLES[CROPS_PRIMARY]}
+DATA = faostat.get_data_df(CODE, pars=MY_PARAMS, strval=False)
 
 
 # Check if new data is available
