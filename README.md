@@ -37,7 +37,7 @@
     L -->|connects to| D
     L -->|shares| S[Shared Space]
     
-     SE[Server] -->|connects to| D
+     SE[Dashboard App] -->|connects to| D
 
     style R fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
     style E fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
