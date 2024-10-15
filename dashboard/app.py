@@ -152,6 +152,16 @@ def calculate_average_growth_rate(yearly_totals):
     return average_growth_rate
 
 
+# Define the style dictionary
+style = {
+    'width': '33%',
+    'maxWidth': '400px',
+    'margin': '0 auto'
+}
+current_date_or = date.today()
+# Get current date - 1 day  i cases the data source isnt updated
+current_date = date.today() - timedelta(days=1)
+
 # GENERAL STATISTIC INFO FOR TOTAL CROP YIEL ###################################
 load_and_prepare_data(None, None, None, None)
 
@@ -267,13 +277,50 @@ app.layout = html.Div(children=[    # define the components shown in the app GUI
         style=style
 
     ),
-    dcc.Graph(id='scatter-plot'),
+    # add the gauge meters and put them in the same line with the scatter plot
+    html.Div(
+        className='row',
+        style={'display': 'flex', 'align-items': 'center',
+               'justify-content': 'space-between', 'flex-wrap': 'wrap'},  # Ensure flexible layout
+        children=[
+            # Scatter plot
+            # Make the graph flexible and responsive
+            dcc.Graph(id='scatter-plot',
+                      style={'flex': '1 1 60%', 'min-width': '300px'}),
+
+            # Gauge meters
+            html.Div(
+                style={'display': 'flex', 'flex-direction': 'column', 'flex': '1 1 30%',
+                       'min-width': '250px', 'margin-left': '20px'},  # Flexible layout for the gauges
+                children=[
+                    daq.Gauge(
+                        id='correlation-gauge',
+                        label="Correlation",
+                        value=0,  # Initial value, will be updated
+                        max=1,
+                        min=-1,
+                        color={"gradient": True, "ranges": {
+                            "green": [0.8, 1], "yellow": [0.5, 0.8], "red": [-1, 0.5]}}
+                    ),
+                    daq.Gauge(
+                        id='p-value-gauge',
+                        label="Trustability",
+                        value=0,  # Initial value, will be updated
+                        max=1,
+                        color={"gradient": True, "ranges": {
+                            "green": [0.95, 1], "yellow": [0.8, 0.95], "red": [0, 0.8]}}
+                    ),
+                ]
+            ),
+        ]
+    ),
+
 
     # TOTAL CROP YIELD THROUGH THE YEARS ########################################
     html.H1(children="Total Crop yield through the years"),
     daq.ToggleSwitch(
         id='start-tutorial',
-        label='Start Tutorial',
+        label='Help',
         labelPosition='bottom',
         value=False,
         color='green'
@@ -429,6 +476,8 @@ def update_yield_graph(selected_feature, selected_item):
 
 @app.callback(
     Output('scatter-plot', 'figure'),
+    Output('correlation-gauge', 'value'),  # Output for correlation gauge
+    Output('p-value-gauge', 'value'),    # Output for p-value gauge
     [Input('item-dropdown', 'value'),
      Input('weather-attribute-dropdown', 'value')]
 )
@@ -483,7 +532,7 @@ def update_scatter_plot(item_name, weather_column):
         font=dict(size=14)
     )
 
-    return fig
+    return fig, correlation, 1-p_value
 
 
 # LINE GRAPH FOR TOTAL CROP YIELD THROUGH YEARS #################################
@@ -522,8 +571,8 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
         pie_fig = go.Figure(data=[pie_data])
         pie_fig.update_layout(
             title=f'Distribution for {clicked_year}',
-            height=800,
-            width=1200,
+            height=1000,
+            width=1400,
             autosize=True,
             margin=dict(l=50, r=50, t=100, b=50),
             legend=dict(x=1.05, y=0.5, orientation='v'),

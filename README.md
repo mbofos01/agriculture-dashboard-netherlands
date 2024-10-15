@@ -33,8 +33,11 @@
         D[Postgres Database]
     end
 
+  
     L -->|connects to| D
     L -->|shares| S[Shared Space]
+    
+     SE[Dashboard App] -->|connects to| D
 
     style R fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
     style E fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
@@ -43,4 +46,5 @@
     style D fill:#bfb,stroke:#333,stroke-width:2px,color:#000;
     style W fill:#FF6961,stroke:#333,stroke-width:2px,color:#000;
     style S fill:#ADD8E6,stroke:#333,stroke-width:2px,color:#000;
+    style SE fill:#FFA500,stroke:#333,stroke-width:2px,color:#000;
 ```
