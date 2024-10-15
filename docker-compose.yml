@@ -49,10 +49,6 @@ services:
       - TRANSFORM_QUEUE=transform_queue
       - SERVER_QUEUE=server_queue
     restart: on-failure # Restart the container only on failure
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 5 # Restart only 5 times if it fails
     links:
       - rabbitmq
     volumes:
@@ -78,10 +74,6 @@ services:
       - TRANSFORM_QUEUE=transform_queue
       - SERVER_QUEUE=server_queue
     restart: on-failure # Restart the container only on failure
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 5 # Restart only 5 times if it fails
     links:
       - rabbitmq
     volumes:
@@ -105,10 +97,6 @@ services:
       - TRANSFORM_QUEUE=transform_queue
       - SERVER_QUEUE=server_queue
     restart: on-failure # Restart the container only on failure
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 5 # Restart only 5 times if it fails
     links:
       - rabbitmq
     volumes:
