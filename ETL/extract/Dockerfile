@@ -10,6 +10,12 @@ RUN pip install -r /app/requirements.txt
 # Install cron and other dependencies
 RUN apt-get update && apt-get install -y cron
 
+# Install dos2unix
+RUN apt-get install -y dos2unix
+
+# Turn all script to unix format
+RUN dos2unix /app/*.sh 
+
 # Make my_script.sh executable
 RUN chmod +x /app/task.sh
 
