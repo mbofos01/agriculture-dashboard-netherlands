@@ -92,11 +92,14 @@ def get_table_row_count(engine, table_name):
     Returns:
     - The number of rows in the table
     '''
-    with engine.connect() as connection:
-        result = connection.execute(
-            text(f'SELECT COUNT(*) FROM "{table_name}"'))
-        row_count = result.scalar()
-    return row_count
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(
+                text(f'SELECT COUNT(*) FROM "{table_name}"'))
+            row_count = result.scalar()
+        return row_count
+    except:
+        return 0
 
 
 latest = get_latest_dataset()
@@ -131,7 +134,7 @@ elif DATA.shape[0] < LATEST_INDEX:
     print(f" [{INDICATOR}] FAOSTAT data is missing")
 elif DATA.shape[0] > LATEST_INDEX:
     print(f" [{INDICATOR}] New FAOSTAT data available")
-    TIMESTAMP = datetime.now().strftime('%Y_%m_%d')
+    TIMESTAMP = datetime.now().strftime('%Y-%m-%d_%H-%M')
     DATA.to_csv(f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', index=False)
     payload = json.dumps(
         {'file_name': f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', 'dataset': 'QCL'})
