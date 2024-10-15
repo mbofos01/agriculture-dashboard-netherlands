@@ -1,3 +1,4 @@
+import pika
 from datetime import date, datetime, timedelta
 from dash import Input, Output, State, callback_context
 import dash_daq as daq  # Import dash_daq
@@ -22,20 +23,113 @@ import openmeteo_requests
 from geopy.geocoders import Nominatim
 from dash.dependencies import Input, Output, State
 import pandas as pd
-# LOAD CROP DATA
-FAOSTAT = pd.read_csv("/data/FAOSTAT_nozer.csv")
-# LOAD WEATHER DATA
-yearly_average_merged_data = pd.read_csv("/data/final_yearly_merged_data.csv")
-
-# CREAT THE DATASET WITH THE TOTAL CROP PER YEAR
-yearly_totals = FAOSTAT.groupby('Year')['Value'].sum().reset_index()
+from threading import Thread
+import os
+from sqlalchemy import create_engine, text, inspect, Table
 
 
-# After runing this block you can access the application in http://localhost:8050/
+SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
+INDICATOR = SERVER_SERVICE_NAME.upper()[0]
+SERVER_QUEUE = os.getenv('SERVER_QUEUE', 'server_queue')
+engine = create_engine(
+    "postgresql://student:infomdss@database:5432/dashboard")
 
-# Visualization libraries
+# Create Dash app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+# Define the style dictionary
+style = {
+    'width': '33%',
+    'maxWidth': '400px',
+    'margin': '0 auto'
+}
 
-# Visualization libraries
+
+def load_and_prepare_data(ch, method, properties, body):
+    global current_date, current_date_or, FAOSTAT
+    global yearly_average_merged_data, yearly_totals
+    global average_growth_rate, mean_value, geom_mean_value
+    global min_value, min_year, max_value, max_year, top_products
+    global top_5_products, merged_df, correlations, top_5_correlations
+
+    if body is not None:
+        try:
+            print(f" [S] Received {body.decode()}")
+        except Exception as e:
+            pass
+
+    # LOAD CROP DATA
+    # FAOSTAT = pd.read_csv("/data/FAOSTAT_nozer.csv")
+    FAOSTAT = None
+
+    with engine.connect() as connection:
+        # QCL is in quotes because of case sensitivity
+        result = connection.execute(text('SELECT * FROM "QCL"'))
+        data = result.fetchall()
+        columns = result.keys()
+        FAOSTAT = pd.DataFrame(data, columns=columns)
+
+    print(f" [S] Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
+    # LOAD WEATHER DATA
+    yearly_average_merged_data = pd.read_csv(
+        "/data/final_yearly_merged_data.csv")
+
+    # with engine.connect() as connection:
+    #     result = connection.execute(text("SELECT * FROM Weather"))
+    #     data = result.fetchall()
+    #     columns = result.keys()
+    #     FAOSTAT = pd.DataFrame(data, columns=columns)
+
+    # CREAT THE DATASET WITH THE TOTAL CROP PER YEAR
+    yearly_totals = FAOSTAT.groupby('Year')['Value'].sum().reset_index()
+
+    # Calculate and print the average growth rate
+    average_growth_rate = calculate_average_growth_rate(yearly_totals)
+
+    # CALCULATE STATISTICS FOR TOTAL CROP YIELD THROUGH THE YEARS #################
+    # 1. Calculate Mean Value
+    mean_value = yearly_totals['Value'].mean()
+
+    # 2. Calculate Geometric Mean
+    geom_mean_value = average_growth_rate
+
+    # 3. Calculate Min Value and the Year it Occurs
+    min_value = yearly_totals['Value'].min()
+    min_year = yearly_totals['Year'][yearly_totals['Value'].idxmin()]
+
+    # 4. Calculate Max Value and the Year it Occurs
+    max_value = yearly_totals['Value'].max()
+    max_year = yearly_totals['Year'][yearly_totals['Value'].idxmax()]
+
+    # CALCULATE CORRELATION BETWEEN WEATHER ATTRIBUTES AND CROP ####################
+    # Calculate total production by product
+    top_products = FAOSTAT.groupby('Item')['Value'].sum().reset_index()
+
+    # Sort the products by value in descending order and get the top 5
+    top_5_products = top_products.nlargest(
+        5, 'Value').sort_values(by='Value', ascending=False)
+
+    # Merge DataFrames on Year
+    merged_df = pd.merge(yearly_average_merged_data, yearly_totals, on='Year')
+
+    # Calculate Pearson correlations
+    correlations = {}
+    for column in merged_df.columns:
+        if column not in ['Year', 'Value']:
+            correlation_coefficient, _ = pearsonr(
+                merged_df[column], merged_df['Value'])
+            correlations[column] = correlation_coefficient
+
+    # Get the top 5 most correlated weather attributes
+    top_5_correlations = pd.Series(correlations).nlargest(5).reset_index()
+    top_5_correlations.columns = ['Attribute', 'Correlation']
+
+    # Convert correlation to percentage
+    top_5_correlations['Correlation'] = (
+        top_5_correlations['Correlation'] * 100).round(2)
+
+    current_date_or = date.today()
+    # Get current date - 1 day  i cases the data source isnt updated
+    current_date = date.today() - timedelta(days=1)
 
 
 def calculate_average_growth_rate(yearly_totals):
@@ -58,66 +152,6 @@ def calculate_average_growth_rate(yearly_totals):
     return average_growth_rate
 
 
-# Calculate and print the average growth rate
-average_growth_rate = calculate_average_growth_rate(yearly_totals)
-
-# CALCULATE STATISTICS FOR TOTAL CROP YIELD THROUGH THE YEARS #################
-# 1. Calculate Mean Value
-mean_value = yearly_totals['Value'].mean()
-
-# 2. Calculate Geometric Mean
-geom_mean_value = average_growth_rate
-
-# 3. Calculate Min Value and the Year it Occurs
-min_value = yearly_totals['Value'].min()
-min_year = yearly_totals['Year'][yearly_totals['Value'].idxmin()]
-
-# 4. Calculate Max Value and the Year it Occurs
-max_value = yearly_totals['Value'].max()
-max_year = yearly_totals['Year'][yearly_totals['Value'].idxmax()]
-
-
-# CALCULATE CORRELATION BETWEEN WEATHER ATTRIBUTES AND CROP ####################
-# Calculate total production by product
-top_products = FAOSTAT.groupby('Item')['Value'].sum().reset_index()
-
-# Sort the products by value in descending order and get the top 5
-top_5_products = top_products.nlargest(
-    5, 'Value').sort_values(by='Value', ascending=False)
-
-
-# Merge DataFrames on Year
-merged_df = pd.merge(yearly_average_merged_data, yearly_totals, on='Year')
-
-# Calculate Pearson correlations
-correlations = {}
-for column in merged_df.columns:
-    if column not in ['Year', 'Value']:
-        correlation_coefficient, _ = pearsonr(
-            merged_df[column], merged_df['Value'])
-        correlations[column] = correlation_coefficient
-
-# Get the top 5 most correlated weather attributes
-top_5_correlations = pd.Series(correlations).nlargest(5).reset_index()
-top_5_correlations.columns = ['Attribute', 'Correlation']
-
-# Convert correlation to percentage
-top_5_correlations['Correlation'] = (
-    top_5_correlations['Correlation'] * 100).round(2)
-
-# Create Dash app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-
-# Define the style dictionary
-style = {
-    'width': '33%',
-    'maxWidth': '400px',
-    'margin': '0 auto'
-}
-current_date_or = date.today()
-# Get current date - 1 day  i cases the data source isnt updated
-current_date = date.today() - timedelta(days=1)
-
 # Define the style dictionary
 style = {
     'width': '33%',
@@ -129,6 +163,7 @@ current_date_or = date.today()
 current_date = date.today() - timedelta(days=1)
 
 # GENERAL STATISTIC INFO FOR TOTAL CROP YIEL ###################################
+load_and_prepare_data(None, None, None, None)
 
 
 def create_cards():
@@ -564,6 +599,42 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
     return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}
 
 
+def on_message(channel, method_frame, header_frame, body):
+    print(f" [S] Received message: {body.decode('utf-8')}")
+    # Manually acknowledge the message
+    channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+
+
+def on_connected(connection):
+    # Open a channel once the connection is established
+    connection.channel(on_open_callback=on_channel_open)
+
+
+def on_channel_open(channel):
+    # Declare the queue
+    channel.queue_declare(queue=SERVER_QUEUE)
+    # Start consuming messages
+    channel.basic_consume(SERVER_QUEUE, load_and_prepare_data)
+
+
+def rabbitmq_consumer():
+    parameters = pika.ConnectionParameters(host='rabbitmq', heartbeat=600)
+    connection = pika.SelectConnection(
+        parameters, on_open_callback=on_connected)
+
+    print(" [S] Starting RabbitMQ consumer...")
+    # Non-blocking I/O loop
+    try:
+        connection.ioloop.start()
+    except Exception as e:
+        print(f" [S] Error in consumer: {e}")
+        connection.ioloop.stop()
+
+
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8050)
+
+    consumer_thread = Thread(target=rabbitmq_consumer, daemon=True)
+    consumer_thread.start()
+
+    app.run_server(debug=True, host='0.0.0.0', port=8050, use_reloader=True)

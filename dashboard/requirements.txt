@@ -15,3 +15,6 @@ dash
 dash-bootstrap-components
 dash-daq
 IPython
+sqlalchemy 
+psycopg2
+pika
