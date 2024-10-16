@@ -2,7 +2,8 @@ import faostat
 import pandas as pd
 from datetime import datetime
 import os
-from sqlalchemy import create_engine, text, inspect, Table
+from sqlalchemy import create_engine
+import database_communication as db
 from communication.communicate import wake_up_service, log_action
 import json
 
@@ -19,21 +20,6 @@ EXTRACT_SERVICE_NAME = os.getenv('EXTRACT_SERVICE_NAME', 'extract')
 INDICATOR = EXTRACT_SERVICE_NAME.upper()[0]
 TRANSFORM_SERVICE_NAME = os.getenv('TRANSFORM_SERVICE_NAME', 'transform')
 TRANSFORM_QUEUE = os.getenv('TRANSFORM_QUEUE', 'transform_queue')
-
-
-def table_exists(engine, table_name):
-    '''
-    This function checks if a table exists in a database.
-
-    Parameters:
-    - engine: The database engine
-    - table_name: The name of the table to check
-
-    Returns:
-    - True if the table exists, False otherwise
-    '''
-    inspector = inspect(engine)
-    return table_name in inspector.get_table_names()
 
 
 def get_latest_dataset(directory=ROOT_DIR, prefix=PREFIX):
@@ -93,7 +79,7 @@ DATA = faostat.get_data_df(CODE, pars=MY_PARAMS, strval=False)
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
 
-if table_exists(engine, 'QCL') == False and get_latest_dataset() is not None:
+if db.table_exists(engine, 'QCL') == False and get_latest_dataset() is not None:
     log_action(EXTRACT_SERVICE_NAME,
                "Table does not exist, but data is available locally")
     payload = json.dumps(
