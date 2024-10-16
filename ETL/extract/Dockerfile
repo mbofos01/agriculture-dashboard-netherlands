@@ -20,7 +20,7 @@ RUN dos2unix /app/*.sh
 RUN chmod +x /app/task.sh
 
 # Add cron job
-RUN echo "SHELL=/bin/bash\n*/5 * * * * /app/task.sh >> /var/log/cron.log 2>&1" > /etc/cron.d/my_cron
+RUN echo "SHELL=/bin/bash\n*/1 * * * * /app/task.sh >> /var/log/cron.log 2>&1" > /etc/cron.d/my_cron
 
 # Give execution rights on the cron job
 RUN chmod 0644 /etc/cron.d/my_cron
