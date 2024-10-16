@@ -1,6 +1,27 @@
 import pika
 import time
+import datetime
 TIMEOUT_SECONDS = 5
+
+
+def log_action(service_name, message):
+    '''
+    This function logs an action.
+
+    Parameters:
+    - service_name: The name of the service performing the action
+    - message: The message to log
+
+    Returns:
+    - None
+    '''
+    try:
+        service_indicator = service_name.upper()[0]
+    except:
+        service_indicator = "X"
+
+    TIMESTAMP = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f" [{TIMESTAMP}] - [{service_indicator}] {message}")
 
 
 def wake_up_service(message, service_name_to, service_name_from, queue_name):
@@ -24,12 +45,8 @@ def wake_up_service(message, service_name_to, service_name_from, queue_name):
 
     channel.basic_publish(
         exchange='', routing_key=queue_name, body=message)
-    try:
-        service_indicator = service_name_from.upper()[0]
-    except:
-        service_indicator = "X"
 
-    print(f" [{service_indicator}] Sent '{message}' to {service_name_to}")
+    log_action(service_name_from, f"Sent '{message}' to {service_name_to}")
 
 
 def default_callback(ch, method, properties, body):
@@ -59,8 +76,8 @@ def wait_for_service(service_name, queue_name, callback=None):
             channel.queue_declare(queue=queue_name)
             break  # If connection is successful, exit the loop
         except pika.exceptions.AMQPConnectionError:
-            print(
-                f"RabbitMQ not available yet, retrying in {TIMEOUT_SECONDS} seconds...")
+            log_action(
+                service_name, f"RabbitMQ not available yet, retrying in {TIMEOUT_SECONDS} seconds...")
             time.sleep(TIMEOUT_SECONDS)
 
     channel.basic_consume(
@@ -71,5 +88,5 @@ def wait_for_service(service_name, queue_name, callback=None):
     except:
         service_indicator = "X"
 
-    print(f" [{service_indicator}] Waiting on {queue_name}. To exit press CTRL+C")
+    log_action(service_name, f"Waiting on {queue_name}. To exit press CTRL+C")
     channel.start_consuming()

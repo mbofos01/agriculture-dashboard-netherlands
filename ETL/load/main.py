@@ -1,13 +1,16 @@
-from communication.communicate import wake_up_service, wait_for_service
+from communication.communicate import wake_up_service, wait_for_service, log_action
 import os
 import pandas as pd
-from sqlalchemy import create_engine, text, inspect, Table
+from sqlalchemy import create_engine, text
+import json
 
 EXTRACT_SERVICE_NAME = os.getenv('EXTRACT_SERVICE_NAME', 'extract')
+SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
 LOAD_SERVICE_NAME = os.getenv('LOAD_SERVICE_NAME', 'load')
 INDICATOR = LOAD_SERVICE_NAME.upper()[0]
 TRANSFORM_QUEUE = os.getenv('TRANSFORM_QUEUE', 'transform_queue')
 LOADING_QUEUE = os.getenv('LOADING_QUEUE', 'loading_queue')
+SERVER_QUEUE = os.getenv('SERVER_QUEUE', 'server_queue')
 
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
@@ -27,19 +30,29 @@ def load_data_to_database(ch, method, properties, body):
     - None
     '''
     try:
-        active_file_name = body.decode()
-        print(f" [{INDICATOR}] Received {active_file_name}")
-        print(f" [{INDICATOR}] Loading data...")
+        payload = json.loads(body)
+        active_file_name = payload["file_name"]
+        active_dataset = payload["dataset"]
+        log_action(LOAD_SERVICE_NAME,
+                   "Received {active_file_name} for {active_dataset}")
+        log_action(LOAD_SERVICE_NAME, f"Loading data...")
         with engine.connect() as conn:
             result = conn.execute(text("DROP TABLE IF EXISTS QCL CASCADE;"))
 
-        print(f" [{INDICATOR}] Connecting with PostgreSQL...")
+        log_action(LOAD_SERVICE_NAME, "Connecting with PostgreSQL...")
         data_frame = pd.read_csv(active_file_name, delimiter=",")
 
         data_frame.to_sql("QCL", engine, if_exists="replace", index=True)
-        print(f" [{INDICATOR}] Data Loaded Succesfully")
+        log_action(LOAD_SERVICE_NAME, "Data loaded successfully!")
+
+        payload = json.dumps(
+            {'status': "Data updated successfully", 'file_name': active_file_name, 'dataset': active_dataset})
+        wake_up_service(message=payload,
+                        service_name_to=SERVER_SERVICE_NAME,
+                        service_name_from=LOAD_SERVICE_NAME,
+                        queue_name=SERVER_QUEUE)
     except Exception as e:
-        print(f" [{INDICATOR}] Something went wrong! {e}")
+        log_action(LOAD_SERVICE_NAME, f"Something went wrong: {e}")
 
 
 wait_for_service(service_name=LOAD_SERVICE_NAME,
