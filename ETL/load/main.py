@@ -1,4 +1,4 @@
-from communication.communicate import wake_up_service, wait_for_service
+from communication.communicate import wake_up_service, wait_for_service, log_action
 import os
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -33,16 +33,17 @@ def load_data_to_database(ch, method, properties, body):
         payload = json.loads(body)
         active_file_name = payload["file_name"]
         active_dataset = payload["dataset"]
-        print(f" [{INDICATOR}] Received {active_file_name}")
-        print(f" [{INDICATOR}] Loading data...")
+        log_action(LOAD_SERVICE_NAME,
+                   "Received {active_file_name} for {active_dataset}")
+        log_action(LOAD_SERVICE_NAME, f"Loading data...")
         with engine.connect() as conn:
             result = conn.execute(text("DROP TABLE IF EXISTS QCL CASCADE;"))
 
-        print(f" [{INDICATOR}] Connecting with PostgreSQL...")
+        log_action(LOAD_SERVICE_NAME, "Connecting with PostgreSQL...")
         data_frame = pd.read_csv(active_file_name, delimiter=",")
 
         data_frame.to_sql("QCL", engine, if_exists="replace", index=True)
-        print(f" [{INDICATOR}] Data Loaded Succesfully")
+        log_action(LOAD_SERVICE_NAME, "Data loaded successfully!")
 
         payload = json.dumps(
             {'status': "Data updated successfully", 'file_name': active_file_name, 'dataset': active_dataset})
@@ -51,7 +52,7 @@ def load_data_to_database(ch, method, properties, body):
                         service_name_from=LOAD_SERVICE_NAME,
                         queue_name=SERVER_QUEUE)
     except Exception as e:
-        print(f" [{INDICATOR}] Something went wrong! {e}")
+        log_action(LOAD_SERVICE_NAME, f"Something went wrong: {e}")
 
 
 wait_for_service(service_name=LOAD_SERVICE_NAME,

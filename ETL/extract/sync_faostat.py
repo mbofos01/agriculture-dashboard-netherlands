@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 from sqlalchemy import create_engine, text, inspect, Table
-from communication.communicate import wake_up_service
+from communication.communicate import wake_up_service, log_action
 import json
 
 # These variables are used to fetch data
@@ -11,7 +11,7 @@ CODE = 'QCL'
 NETHERLANDS = 'Netherlands (Kingdom of the)'
 PREFIX = 'netherlands_qcl_data'
 ROOT_DIR = "/data"
-PRODUCTION_YIELD = 'Production Quantity'
+PRODUCTION_QUANTITY = 'Production Quantity'
 CROPS_PRIMARY = 'Crops, primary > (List)'
 
 # These variables are used to communicate with other services
@@ -19,6 +19,21 @@ EXTRACT_SERVICE_NAME = os.getenv('EXTRACT_SERVICE_NAME', 'extract')
 INDICATOR = EXTRACT_SERVICE_NAME.upper()[0]
 TRANSFORM_SERVICE_NAME = os.getenv('TRANSFORM_SERVICE_NAME', 'transform')
 TRANSFORM_QUEUE = os.getenv('TRANSFORM_QUEUE', 'transform_queue')
+
+
+def table_exists(engine, table_name):
+    '''
+    This function checks if a table exists in a database.
+
+    Parameters:
+    - engine: The database engine
+    - table_name: The name of the table to check
+
+    Returns:
+    - True if the table exists, False otherwise
+    '''
+    inspector = inspect(engine)
+    return table_name in inspector.get_table_names()
 
 
 def get_latest_dataset(directory=ROOT_DIR, prefix=PREFIX):
@@ -66,74 +81,41 @@ def get_latest_index(directory=ROOT_DIR, prefix=PREFIX):
         return 0
 
 
-def table_exists(engine, table_name):
-    '''
-    This function checks if a table exists in a database.
-
-    Parameters:
-    - engine: The database engine
-    - table_name: The name of the table to check
-
-    Returns:
-    - True if the table exists, False otherwise
-    '''
-    inspector = inspect(engine)
-    return table_name in inspector.get_table_names()
-
-
-def get_table_row_count(engine, table_name):
-    '''
-    Get the number of rows in a table.
-
-    Parameters:
-    - engine: The database engine
-    - table_name: The name of the table to count rows
-
-    Returns:
-    - The number of rows in the table
-    '''
-    try:
-        with engine.connect() as connection:
-            result = connection.execute(
-                text(f'SELECT COUNT(*) FROM "{table_name}"'))
-            row_count = result.scalar()
-        return row_count
-    except:
-        return 0
-
-
-latest = get_latest_dataset()
-engine = create_engine(
-    "postgresql://student:infomdss@database:5432/dashboard")
-
-if table_exists(engine, 'QCL') == False and latest is not None:
-    print(f" [{INDICATOR}] Table does not exist, but data is available locally")
-    payload = json.dumps(
-        {'file_name': "/data/" + latest, 'dataset': 'QCL'})
-    wake_up_service(
-        message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
-    exit(1)
-
 # Define the details you want to fetch
 AREA_TUPLES = faostat.get_par(CODE, 'area')
 ELEMENT_TUPLES = faostat.get_par(CODE, 'element')
 ITEM_TUPLES = faostat.get_par(CODE, 'item')
 
 MY_PARAMS = {'area': AREA_TUPLES[NETHERLANDS], 'element': [
-    ELEMENT_TUPLES[PRODUCTION_YIELD]], 'item': ITEM_TUPLES[CROPS_PRIMARY]}
+    ELEMENT_TUPLES[PRODUCTION_QUANTITY]], 'item': ITEM_TUPLES[CROPS_PRIMARY]}
 DATA = faostat.get_data_df(CODE, pars=MY_PARAMS, strval=False)
 
-LATEST_INDEX = get_table_row_count(engine, 'QCL')
+engine = create_engine(
+    "postgresql://student:infomdss@database:5432/dashboard")
+
+if table_exists(engine, 'QCL') == False and get_latest_dataset() is not None:
+    log_action(EXTRACT_SERVICE_NAME,
+               "Table does not exist, but data is available locally")
+    payload = json.dumps(
+        {'file_name': "/data/" + get_latest_dataset(), 'dataset': 'QCL'})
+    wake_up_service(
+        message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
+    exit(1)
+
+try:
+    LATEST_INDEX = get_latest_index()
+except:
+    LATEST_INDEX = 0
 
 # Check if new data is available
 if DATA is None or DATA.empty:
-    print(f" [{INDICATOR}] No FAOSTAT data available")
+    log_action(EXTRACT_SERVICE_NAME, "No FAOSTAT data available")
 elif DATA.shape[0] == LATEST_INDEX:
-    print(f" [{INDICATOR}] No new FAOSTAT data available")
+    log_action(EXTRACT_SERVICE_NAME, "No new FAOSTAT data available")
 elif DATA.shape[0] < LATEST_INDEX:
-    print(f" [{INDICATOR}] FAOSTAT data is missing")
+    log_action(EXTRACT_SERVICE_NAME, "FAOSTAT data is missing")
 elif DATA.shape[0] > LATEST_INDEX:
-    print(f" [{INDICATOR}] New FAOSTAT data available")
+    log_action(EXTRACT_SERVICE_NAME, "New FAOSTAT data available")
     TIMESTAMP = datetime.now().strftime('%Y-%m-%d_%H-%M')
     DATA.to_csv(f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', index=False)
     payload = json.dumps(
@@ -141,6 +123,5 @@ elif DATA.shape[0] > LATEST_INDEX:
     wake_up_service(
         message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
 else:
-    print(f" [{INDICATOR}] Something went wrong with FAOSTAT data extraction")
-
-engine.dispose()
+    log_action(EXTRACT_SERVICE_NAME,
+               "Something went wrong with FAOSTAT data extraction")

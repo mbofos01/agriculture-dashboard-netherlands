@@ -2,6 +2,7 @@ import pika
 from datetime import date, datetime, timedelta
 from dash import Input, Output, State, callback_context
 import dash_daq as daq  # Import dash_daq
+import datetime
 from IPython.display import display, HTML
 from dash.dash_table import DataTable
 import dash_bootstrap_components as dbc
@@ -26,6 +27,16 @@ import pandas as pd
 from threading import Thread
 import os
 from sqlalchemy import create_engine, text, inspect, Table
+
+
+def log_action(service_name, message):
+    try:
+        service_indicator = service_name.upper()[0]
+    except:
+        service_indicator = "X"
+
+    TIMESTAMP = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f" [{TIMESTAMP}] - [{service_indicator}] {message}")
 
 
 SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
@@ -54,7 +65,7 @@ def load_and_prepare_data(ch, method, properties, body):
 
     if body is not None:
         try:
-            print(f" [S] Received {body.decode()}")
+            log_action(SERVER_SERVICE_NAME, f"Received {body.decode()}")
         except Exception as e:
             pass
 
@@ -69,7 +80,8 @@ def load_and_prepare_data(ch, method, properties, body):
         columns = result.keys()
         FAOSTAT = pd.DataFrame(data, columns=columns)
 
-    print(f" [S] Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
+    log_action(SERVER_SERVICE_NAME,
+               f"Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
     # LOAD WEATHER DATA
     yearly_average_merged_data = pd.read_csv(
         "/data/final_yearly_merged_data.csv")
@@ -666,7 +678,8 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
 
 
 def on_message(channel, method_frame, header_frame, body):
-    print(f" [S] Received message: {body.decode('utf-8')}")
+    log_action(SERVER_SERVICE_NAME,
+               f"Received message: {body.decode('utf-8')}")
     # Manually acknowledge the message
     channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
@@ -688,12 +701,12 @@ def rabbitmq_consumer():
     connection = pika.SelectConnection(
         parameters, on_open_callback=on_connected)
 
-    print(" [S] Starting RabbitMQ consumer...")
+    log_action(SERVER_SERVICE_NAME, "Starting RabbitMQ consumer...")
     # Non-blocking I/O loop
     try:
         connection.ioloop.start()
     except Exception as e:
-        print(f" [S] Error in consumer: {e}")
+        log_action(SERVER_SERVICE_NAME, f"Error in consumer: {e}")
         connection.ioloop.stop()
 
 
