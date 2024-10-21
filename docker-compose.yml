@@ -28,6 +28,7 @@ services:
     command: [ "postgres", "-c", "logging_collector=off", "-c", "log_statement=none", "-c", "log_min_messages=fatal" ]
     volumes:
       - db_dashboard-data:/var/lib/postgresql/data/
+      - ./database/init_data.sql:/docker-entrypoint-initdb.d/init_data.sql
     container_name: database
 
   extract:

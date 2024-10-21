@@ -55,6 +55,17 @@ style = {
     'margin': '0 auto'
 }
 
+FEATURE_NAMES = None
+
+with engine.connect() as connection:
+    # QCL is in quotes because of case sensitivity
+    result = connection.execute(
+        text('SELECT * FROM "climate_data_attributes"'))
+    data = result.fetchall()
+    columns = result.keys()
+    df = pd.DataFrame(data, columns=result.keys())
+    FEATURE_NAMES = dict(zip(df['attribute_code'], df['description']))
+
 
 def load_and_prepare_data(ch, method, properties, body):
     global current_date, current_date_or, FAOSTAT
@@ -257,25 +268,6 @@ app.layout = dbc.Container(
             },
             children=[
                 dcc.Dropdown(
-                    id='yearly-data-feature',
-                    options=[{'label': col, 'value': col}
-                             for col in yearly_average_merged_data.columns if col != 'Year'],
-                    # Default value (first column after 'Year')
-                    value=yearly_average_merged_data.columns[1],
-                    className='dropdown-container',
-                    clearable=False,
-                    searchable=True,
-                    style={
-                        'width': '300px',  # Increased width for better visibility
-                        'fontSize': '16px',  # Increase font size for better readability
-                        'border': '1px solid #ccc',  # Light border
-                        'backgroundColor': '#f9f9f9',  # Light background color
-                        'color': '#333',  # Text color
-                    },
-                    optionHeight=60
-
-                ),
-                dcc.Dropdown(
                     id='faostat-item',
                     options=[{'label': item, 'value': item}
                              for item in FAOSTAT['Item'].unique()],
@@ -285,7 +277,7 @@ app.layout = dbc.Container(
                     clearable=False,
                     searchable=True,
                     style={
-                        'width': '300px',  # Increased width for better visibility
+                        'width': '400px',  # Increased width for better visibility
                         'fontSize': '16px',  # Increase font size for better readability
                         'border': '1px solid #ccc',  # Light border
                         'backgroundColor': '#f9f9f9',  # Light background color
@@ -293,7 +285,26 @@ app.layout = dbc.Container(
                     },
                     optionHeight=60
 
-                )
+                ),
+                dcc.Dropdown(
+                    id='yearly-data-feature',
+                    options=[{'label': FEATURE_NAMES[col], 'value': col}
+                             for col in yearly_average_merged_data.columns if col != 'Year'],
+                    # Default value (first column after 'Year')
+                    value=yearly_average_merged_data.columns[1],
+                    className='dropdown-container',
+                    clearable=False,
+                    searchable=True,
+                    style={
+                        'width': '400px',  # Increased width for better visibility
+                        'fontSize': '16px',  # Increase font size for better readability
+                        'border': '1px solid #ccc',  # Light border
+                        'backgroundColor': '#f9f9f9',  # Light background color
+                        'color': '#333',  # Text color
+                    },
+                    optionHeight=60
+
+                ),
             ]
         ),
 
@@ -319,7 +330,7 @@ app.layout = dbc.Container(
                     clearable=False,
                     searchable=True,
                     style={
-                        'width': '300px',  # Increased width for better visibility
+                        'width': '400px',  # Increased width for better visibility
                         'fontSize': '16px',  # Increase font size for better readability
                         'border': '1px solid #ccc',  # Light border
                         'backgroundColor': '#f9f9f9',  # Light background color
@@ -330,14 +341,14 @@ app.layout = dbc.Container(
                 ),
                 dcc.Dropdown(
                     id='weather-attribute-dropdown',
-                    options=[{'label': col, 'value': col}
+                    options=[{'label': FEATURE_NAMES[col], 'value': col}
                              for col in yearly_average_merged_data.columns if col != 'Year'],
                     value="Mean 2m temperature",  # Default value
                     className='dropdown-container',
                     clearable=False,
                     searchable=True,
                     style={
-                        'width': '300px',  # Increased width for better visibility
+                        'width': '400px',  # Increased width for better visibility
                         'fontSize': '16px',  # Increase font size for better readability
                         'border': '1px solid #ccc',  # Light border
                         'backgroundColor': '#f9f9f9',  # Light background color
@@ -443,7 +454,7 @@ app.layout = dbc.Container(
                         style={'textAlign': 'left', 'color': '#4a4a4a'}),
                 *[html.Div(style={'margin': '10px 0', 'padding': '10px', 'backgroundColor': '#f1f1f1', 'borderRadius': '5px'},
                            children=[
-                    html.H3(f"{i + 1}. {row.Item}",
+                    html.H4(f"{i + 1}. {row.Item}",
                             style={'margin': '0', 'color': '#333'}),
                     html.P(f"Quantity in tons: {row.Value}", style={
                         'margin': '0', 'color': '#555'})
@@ -465,7 +476,7 @@ app.layout = dbc.Container(
                     'textAlign': 'left', 'color': '#4a4a4a'}),
                 *[html.Div(style={'margin': '10px 0', 'padding': '10px', 'backgroundColor': '#f1f1f1', 'borderRadius': '5px'},
                            children=[
-                    html.H3(f"{row.Attribute}", style={
+                    html.H4(f"{FEATURE_NAMES[row.Attribute]}", style={
                         'margin': '0', 'color': '#333'}),
                     html.P(f"Correlation: {row.Correlation}%", style={
                         'margin': '0', 'color': '#555'})
@@ -540,9 +551,9 @@ def update_yield_graph(selected_feature, selected_item):
                          offsetgroup=1,   # Assign to second offset group
                          yaxis='y2'))  # Assign to secondary y-axis
 
-    fig.update_layout(title=f"{selected_feature} and {selected_item} over Time",
+    fig.update_layout(title=f"{FEATURE_NAMES[selected_feature]} and {selected_item} over Time",
                       xaxis_title="Year",
-                      yaxis_title=selected_feature,
+                      yaxis_title=FEATURE_NAMES[selected_feature],
                       yaxis2=dict(title=selected_item,
                                   overlaying='y', side='right'),
                       barmode='group')  # Set barmode to 'group'
@@ -587,8 +598,8 @@ def update_scatter_plot(item_name, weather_column):
         x=x_scaled.flatten(),
         y=y_scaled.flatten(),
         labels={
-            'x': f"{item_name} Production ({value_column}) - Scaled", 'y': f"{weather_column} - Scaled"},
-        title=f"Scatter Plot: {item_name} Production vs. {weather_column}",
+            'x': f"{item_name} Production ({value_column}) - Scaled", 'y': f"{FEATURE_NAMES[weather_column]} - Scaled"},
+        title=f"Scatter Plot: {item_name} Production vs. {FEATURE_NAMES[weather_column]}",
         width=700,  # Set the width
         height=700
     )
