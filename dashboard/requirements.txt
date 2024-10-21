@@ -18,3 +18,5 @@ IPython
 sqlalchemy 
 psycopg2
 pika
+geopandas
+folium

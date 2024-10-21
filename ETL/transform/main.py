@@ -10,6 +10,7 @@ INDICATOR = TRANSFORM_SERVICE_NAME.upper()[0]
 TRANSFORM_QUEUE = os.getenv('TRANSFORM_QUEUE', 'transform_queue')
 LOADING_QUEUE = os.getenv('LOADING_QUEUE', 'loading_queue')
 FAOSTAT_INDICATOR = "QCL"
+CBS_INDICATOR = "CBS"
 
 
 def transform_faostat(filename):
@@ -36,6 +37,9 @@ def transform_faostat(filename):
 
     return filename
 
+def transform_cbs(filename):
+    # TODO: Transform CBS data
+    return filename
 
 def notify_load_service(ch, method, properties, body):
     '''
@@ -60,6 +64,8 @@ def notify_load_service(ch, method, properties, body):
         # TODO: Act as transform service for weather data
         if active_dataset == FAOSTAT_INDICATOR:
             active_file_name = transform_faostat(active_file_name)
+        elif active_dataset == CBS_INDICATOR:
+            active_file_name = transform_cbs(active_file_name)
         # Data are transformed
         log_action(TRANSFORM_SERVICE_NAME,
                    f"Transformed {active_file_name} for {active_dataset}")

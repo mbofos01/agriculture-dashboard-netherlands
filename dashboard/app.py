@@ -27,6 +27,14 @@ import pandas as pd
 from threading import Thread
 import os
 from sqlalchemy import create_engine, text, inspect, Table
+import geopandas as gpd
+import folium
+
+ATTRIBUTES = ['AreaUnderCultivation_1', 'HarvestedArea_2',
+              'GrossYieldPerHa_3', 'GrossYieldTotal_4']
+ATTRIBUTE_LABEL = ['Area Under Cultivation',
+                   'Harvested Area', 'Gross Yield Per Ha', 'Gross Yield Total']
+ATTRIBUTE_COLOR = ['magma', 'YlGn', 'Blues', 'RdYlBu']
 
 
 def log_action(service_name, message):
@@ -42,6 +50,7 @@ def log_action(service_name, message):
 SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
 INDICATOR = SERVER_SERVICE_NAME.upper()[0]
 SERVER_QUEUE = os.getenv('SERVER_QUEUE', 'server_queue')
+cbs_arable_crops, cbs_years, cbs_municipal_boundaries, CBS = None, None, None, None
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
 
@@ -73,6 +82,7 @@ def load_and_prepare_data(ch, method, properties, body):
     global average_growth_rate, mean_value, geom_mean_value
     global min_value, min_year, max_value, max_year, top_products
     global top_5_products, merged_df, correlations, top_5_correlations
+    global cbs_arable_crops, cbs_years, cbs_municipal_boundaries, CBS
 
     if body is not None:
         try:
@@ -83,6 +93,7 @@ def load_and_prepare_data(ch, method, properties, body):
     # LOAD CROP DATA
     # FAOSTAT = pd.read_csv("/data/FAOSTAT_nozer.csv")
     FAOSTAT = None
+    CBS = None
 
     with engine.connect() as connection:
         # QCL is in quotes because of case sensitivity
@@ -91,8 +102,18 @@ def load_and_prepare_data(ch, method, properties, body):
         columns = result.keys()
         FAOSTAT = pd.DataFrame(data, columns=columns)
 
+    with engine.connect() as connection:
+        # CBS is in quotes because of case sensitivity
+        result = connection.execute(text('SELECT * FROM "CBS"'))
+        data = result.fetchall()
+        columns = result.keys()
+        CBS = pd.DataFrame(data, columns=columns)
+
     log_action(SERVER_SERVICE_NAME,
                f"Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
+    log_action(SERVER_SERVICE_NAME,
+               f"Loaded {CBS.shape[0]} rows from CBS")
+
     # LOAD WEATHER DATA
     yearly_average_merged_data = pd.read_csv(
         "/data/final_yearly_merged_data.csv")
@@ -154,6 +175,15 @@ def load_and_prepare_data(ch, method, properties, body):
     current_date_or = date.today()
     # Get current date - 1 day  i cases the data source isnt updated
     current_date = date.today() - timedelta(days=1)
+
+    # Prepate CBS data
+    # Get unique values for dropdowns
+    cbs_arable_crops = CBS['ArableCrops'].unique()
+    cbs_years = CBS['Periods'].unique()
+
+    # Load geodata
+    geodata_url = 'provincie_2024.geojson'
+    cbs_municipal_boundaries = gpd.read_file(geodata_url)
 
 
 def calculate_average_growth_rate(yearly_totals):
@@ -310,6 +340,82 @@ app.layout = dbc.Container(
 
         dcc.Graph(id='yield-graph'),  # New graph for yield data
 
+        # MAP OF NETHERLANDS #######################################################
+        html.Div([
+            html.H1("Province Information"),
+            html.Div(
+                style={
+                    'display': 'flex',
+                    'justifyContent': 'center',  # Center horizontally
+                    'alignItems': 'center',  # Center vertically if needed
+                    'gap': '10px',  # Reduced space between dropdowns
+                    'padding': '20px'  # Optional padding around the container
+                },
+                children=[
+                    dcc.Dropdown(
+                        id='crop-dropdown',
+                        options=[{'label': crop, 'value': crop}
+                                 for crop in cbs_arable_crops],
+                        value=cbs_arable_crops[0],  # Default value
+                        className='dropdown-container',
+                        clearable=False,
+                        searchable=True,
+                        style={
+                            'width': '400px',  # Increased width for better visibility
+                            'fontSize': '16px',  # Increase font size for better readability
+                            'border': '1px solid #ccc',  # Light border
+                            'backgroundColor': '#f9f9f9',  # Light background color
+                            'color': '#333',  # Text color
+                        },
+                        optionHeight=60
+
+                    ),
+                    dcc.Dropdown(
+                        id='year-dropdown',
+                        options=[{'label': str(year), 'value': year}
+                                 for year in cbs_years],
+                        value=cbs_years[-1],  # Default value
+                        className='dropdown-container',
+                        clearable=False,
+                        searchable=True,
+                        style={
+                            'width': '400px',  # Increased width for better visibility
+                            'fontSize': '16px',  # Increase font size for better readability
+                            'border': '1px solid #ccc',  # Light border
+                            'backgroundColor': '#f9f9f9',  # Light background color
+                            'color': '#333',  # Text color
+                        },
+                        optionHeight=60
+
+                    ),
+                    dcc.Dropdown(
+                        id='attribute-dropdown',
+                        options=[{'label': ATTRIBUTE_LABEL[index], 'value': index}
+                                 for index, attr in enumerate(ATTRIBUTES)],
+                        value=0,  # Default value
+                        className='dropdown-container',
+                        clearable=False,
+                        searchable=True,
+                        style={
+                            'width': '400px',  # Increased width for better visibility
+                            'fontSize': '16px',  # Increase font size for better readability
+                            'border': '1px solid #ccc',  # Light border
+                            'backgroundColor': '#f9f9f9',  # Light background color
+                            'color': '#333',  # Text color
+                        },
+                        optionHeight=60
+
+                    ),
+                ]
+            ),
+            html.Div(
+                className='d-flex justify-content-center mx-auto',  # Centering classes
+                children=[
+                    # Map container with a set width
+                    html.Div(id='map-container', style={'width': '80%'})
+                ]
+            )
+        ]),
         # SCATTER PLOT FOR CORELLATION BETWEEN WEATHER ATTRIBUTES AND CROP YIELD ####
         html.H1(children="Correlation between weather attributes and crop yield"),
         html.Div(
@@ -686,6 +792,61 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
         return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}
 
     return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}
+
+
+@app.callback(
+    Output('map-container', 'children'),
+    [Input('crop-dropdown', 'value'),
+     Input('year-dropdown', 'value'),
+     Input('attribute-dropdown', 'value')
+     ]
+)
+def update_map(selected_crop, selected_year, selected_attribute):
+    global CBS, cbs_municipal_boundaries
+    # Filter the data based on the selected crop and year
+    filtered_data = CBS[
+        (CBS['ArableCrops'] == selected_crop) &
+        (CBS['Periods'] == selected_year) &
+        (CBS['Regions'].str.endswith('(PV)'))
+    ]
+
+    # Update the name column
+    filtered_data.loc[:, 'name'] = filtered_data['Regions'].str.replace(
+        r'\s*\(PV\)$', '', regex=True)
+
+    # Merge with geodata
+    merged_data = pd.merge(cbs_municipal_boundaries,
+                           filtered_data, left_on="statnaam", right_on="name")
+    merged_data = merged_data.to_crs(epsg=4326)
+
+    # Create Folium map
+    nld_lat = 52.2130
+    nld_lon = 5.2794
+    folium_map = folium.Map(location=[
+                            nld_lat, nld_lon], tiles='cartodbpositron', zoom_start=7, control_scale=True)
+
+    tooltip = folium.GeoJsonTooltip(fields=['statnaam', ATTRIBUTES[selected_attribute]],
+                                    aliases=[
+                                        'Region:', f"{ATTRIBUTE_LABEL[selected_attribute]}:"],
+                                    localize=True)
+
+    folium.Choropleth(
+        geo_data=merged_data,
+        data=merged_data,
+        columns=['statnaam', ATTRIBUTES[selected_attribute]],
+        key_on='feature.properties.statnaam',
+        fill_color=ATTRIBUTE_COLOR[selected_attribute],
+        fill_opacity=0.7,
+        line_color='black',
+        line_opacity=0.8,
+        legend_name=ATTRIBUTE_LABEL[selected_attribute],
+        highlight=True
+    ).add_to(folium_map)
+
+    folium.GeoJson(merged_data, tooltip=tooltip).add_to(folium_map)
+
+    # Return the map as an iframe
+    return html.Iframe(srcDoc=folium_map._repr_html_(), width='100%', height='600')
 
 
 def on_message(channel, method_frame, header_frame, body):

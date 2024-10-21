@@ -132,6 +132,10 @@ services:
       - 8050:8050
     volumes:
       - ./data:/data
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
 
 volumes:
   data:
