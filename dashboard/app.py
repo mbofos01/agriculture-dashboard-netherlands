@@ -808,7 +808,7 @@ def update_map(selected_crop, selected_year, selected_attribute):
         (CBS['ArableCrops'] == selected_crop) &
         (CBS['Periods'] == selected_year) &
         (CBS['Regions'].str.endswith('(PV)'))
-    ]
+    ].copy() 
 
     # Update the name column
     filtered_data.loc[:, 'name'] = filtered_data['Regions'].str.replace(
