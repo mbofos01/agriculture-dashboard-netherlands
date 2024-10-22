@@ -293,6 +293,7 @@ def create_circular_modal(id_prefix, message):
                 ],
                 id=f"{id_prefix}-modal",  # Dynamic id for the modal
                 is_open=False,
+                centered=True,
             ),
         ]
     )
@@ -323,7 +324,9 @@ app.layout = dbc.Container(
 
         # MAP OF NETHERLANDS #######################################################
         html.Div([
-            html.H1("Province Information"),
+            html.Div(className="container mt-5 d-flex justify-content-center  align-items-center", style={'display': 'flex', 'alignItems': 'center'},
+                 children=[html.H1(children="Province Information", style={"margin": "20px", "lineHeight": "50px"}),
+                           create_circular_modal("modal2", "Click on a province to see the weather details for that year."),]),
             html.Div(
                 style={
                     'display': 'flex',
@@ -645,12 +648,25 @@ app.layout = dbc.Container(
               Input('back-button', 'n_clicks')
               )
 def update_help_message(clickData, n_clicks):
-    if n_clicks: # If back button is clicked
+    if n_clicks:  # If back button is clicked
         return "Click on a point in the line graph to see the crop distribution for that year."
     elif clickData:
         return "This pie chart shows the distribution of crop values for the selected year. Use the back button to return."
-    
+
     return "Click on a point in the line graph to see the crop distribution for that year."
+
+
+@app.callback(Output('modal2-body', 'children'),
+              Input('line-graph', 'clickData'),
+              Input('back-button', 'n_clicks')
+              )
+def update_help_message_map(clickData, n_clicks):
+    if n_clicks:  # If back button is clicked
+        return "Click on a province to see the weather details for that year."
+    elif clickData:
+        return "==================================="
+
+    return "Click on a province to see the weather details for that year."
 
 
 # @app.callback(
@@ -930,17 +946,15 @@ def toggle_modal1(n1, n2, is_open):
     return is_open
 
 # Callback to toggle the modal for modal2
-
-
-# @app.callback(
-#     Output("modal2-modal", "is_open"),
-#     [Input("modal2-open", "n_clicks"), Input("modal2-close", "n_clicks")],
-#     [State("modal2-modal", "is_open")],
-# )
-# def toggle_modal2(n1, n2, is_open):
-#     if n1 or n2:
-#         return not is_open
-#     return is_open
+@app.callback(
+    Output("modal2-modal", "is_open"),
+    [Input("modal2-open", "n_clicks"), Input("modal2-close", "n_clicks")],
+    [State("modal2-modal", "is_open")],
+)
+def toggle_modal2(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
 
 
 def on_message(channel, method_frame, header_frame, body):
