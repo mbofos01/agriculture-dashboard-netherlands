@@ -946,6 +946,8 @@ def toggle_modal1(n1, n2, is_open):
     return is_open
 
 # Callback to toggle the modal for modal2
+
+
 @app.callback(
     Output("modal2-modal", "is_open"),
     [Input("modal2-open", "n_clicks"), Input("modal2-close", "n_clicks")],
