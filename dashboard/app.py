@@ -34,7 +34,7 @@ ATTRIBUTES = ['AreaUnderCultivation_1', 'HarvestedArea_2',
               'GrossYieldPerHa_3', 'GrossYieldTotal_4']
 ATTRIBUTE_LABEL = ['Area Under Cultivation',
                    'Harvested Area', 'Gross Yield Per Ha', 'Gross Yield Total']
-ATTRIBUTE_COLOR = ['magma', 'YlGn', 'Blues', 'RdYlBu']
+ATTRIBUTE_COLOR = ['Reds', 'Greens', 'Blues', 'YlGnBu']
 
 
 def log_action(service_name, message):
