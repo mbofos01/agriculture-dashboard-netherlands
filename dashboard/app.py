@@ -281,64 +281,9 @@ app.layout = dbc.Container(
 
         # CARD PLOT GNERAL STATISTICS FOR TOTAL CROP YIELD THROUGH YEARS ############
         dbc.Container([
-            html.H1("Statistics Summary", className="text-center mb-4",
-                    style={'color': '#343a40'}),
+            html.H1("Statistics Summary", className="text-center mb-4"),
             create_cards()  # Insert cards here
         ], fluid=True),
-
-        # WEATHER AND CROP DATA VISUALIZATION #######################################
-        html.H1(children="Weather and Crop Data Visualization"),
-        html.Div(
-            style={
-                'display': 'flex',
-                'justifyContent': 'center',  # Center horizontally
-                'alignItems': 'center',  # Center vertically if needed
-                'gap': '10px',  # Reduced space between dropdowns
-                'padding': '20px'  # Optional padding around the container
-            },
-            children=[
-                dcc.Dropdown(
-                    id='faostat-item',
-                    options=[{'label': item, 'value': item}
-                             for item in FAOSTAT['Item'].unique()],
-                    # Default value (first Item)
-                    value=FAOSTAT['Item'].unique()[2],
-                    className='dropdown-container',
-                    clearable=False,
-                    searchable=True,
-                    style={
-                        'width': '400px',  # Increased width for better visibility
-                        'fontSize': '16px',  # Increase font size for better readability
-                        'border': '1px solid #ccc',  # Light border
-                        'backgroundColor': '#f9f9f9',  # Light background color
-                        'color': '#333',  # Text color
-                    },
-                    optionHeight=60
-
-                ),
-                dcc.Dropdown(
-                    id='yearly-data-feature',
-                    options=[{'label': FEATURE_NAMES[col], 'value': col}
-                             for col in yearly_average_merged_data.columns if col != 'Year'],
-                    # Default value (first column after 'Year')
-                    value=yearly_average_merged_data.columns[1],
-                    className='dropdown-container',
-                    clearable=False,
-                    searchable=True,
-                    style={
-                        'width': '400px',  # Increased width for better visibility
-                        'fontSize': '16px',  # Increase font size for better readability
-                        'border': '1px solid #ccc',  # Light border
-                        'backgroundColor': '#f9f9f9',  # Light background color
-                        'color': '#333',  # Text color
-                    },
-                    optionHeight=60
-
-                ),
-            ]
-        ),
-
-        dcc.Graph(id='yield-graph'),  # New graph for yield data
 
         # MAP OF NETHERLANDS #######################################################
         html.Div([
@@ -416,6 +361,62 @@ app.layout = dbc.Container(
                 ]
             )
         ]),
+
+        # WEATHER AND CROP DATA VISUALIZATION #######################################
+        html.H1(children="Weather and Crop Data Visualization"),
+        html.Div(
+            style={
+                'display': 'flex',
+                'justifyContent': 'center',  # Center horizontally
+                'alignItems': 'center',  # Center vertically if needed
+                'gap': '10px',  # Reduced space between dropdowns
+                'padding': '20px'  # Optional padding around the container
+            },
+            children=[
+                dcc.Dropdown(
+                    id='faostat-item',
+                    options=[{'label': item, 'value': item}
+                             for item in FAOSTAT['Item'].unique()],
+                    # Default value (first Item)
+                    value=FAOSTAT['Item'].unique()[2],
+                    className='dropdown-container',
+                    clearable=False,
+                    searchable=True,
+                    style={
+                        'width': '400px',  # Increased width for better visibility
+                        'fontSize': '16px',  # Increase font size for better readability
+                        'border': '1px solid #ccc',  # Light border
+                        'backgroundColor': '#f9f9f9',  # Light background color
+                        'color': '#333',  # Text color
+                    },
+                    optionHeight=60
+
+                ),
+                dcc.Dropdown(
+                    id='yearly-data-feature',
+                    options=[{'label': FEATURE_NAMES[col], 'value': col}
+                             for col in yearly_average_merged_data.columns if col != 'Year'],
+                    # Default value (first column after 'Year')
+                    value=yearly_average_merged_data.columns[1],
+                    className='dropdown-container',
+                    clearable=False,
+                    searchable=True,
+                    style={
+                        'width': '400px',  # Increased width for better visibility
+                        'fontSize': '16px',  # Increase font size for better readability
+                        'border': '1px solid #ccc',  # Light border
+                        'backgroundColor': '#f9f9f9',  # Light background color
+                        'color': '#333',  # Text color
+                    },
+                    optionHeight=60
+
+                ),
+            ]
+        ),
+
+        dcc.Graph(id='yield-graph'),  # New graph for yield data
+
+
         # SCATTER PLOT FOR CORELLATION BETWEEN WEATHER ATTRIBUTES AND CROP YIELD ####
         html.H1(children="Correlation between weather attributes and crop yield"),
         html.Div(
@@ -709,16 +710,17 @@ def update_scatter_plot(item_name, weather_column):
         # width=700,  # Set the width
         height=700
     )
-    
+
     fig.update_layout(
         title={
-            'text': f"Scatter Plot: {item_name} Production<br>vs. {FEATURE_NAMES[weather_column]}",  # Break into two lines if too long
+            # Break into two lines if too long
+            'text': f"Scatter Plot: {item_name} Production<br>vs. {FEATURE_NAMES[weather_column]}",
             'y': 0.95,  # Adjust vertical positioning
             'x': 0.5,  # Center the title horizontally
             'xanchor': 'center',
             'yanchor': 'top',
             'font': {
-                'size': 18  
+                'size': 18
             }
         },
     )
@@ -821,7 +823,7 @@ def update_map(selected_crop, selected_year, selected_attribute):
         (CBS['ArableCrops'] == selected_crop) &
         (CBS['Periods'] == selected_year) &
         (CBS['Regions'].str.endswith('(PV)'))
-    ].copy() 
+    ].copy()
 
     # Update the name column
     filtered_data.loc[:, 'name'] = filtered_data['Regions'].str.replace(
