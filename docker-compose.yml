@@ -132,6 +132,7 @@ services:
       - 8050:8050
     volumes:
       - ./data:/data
+      - ./dashboard/:/app/
     deploy:
       restart_policy:
         condition: on-failure
