@@ -54,9 +54,14 @@ cbs_arable_crops, cbs_years, cbs_municipal_boundaries, CBS = None, None, None, N
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
 
+external_stylesheets = [
+    dbc.themes.BOOTSTRAP,
+    "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css"
+]
+
 # Create Dash app
-app = dash.Dash(__name__, external_stylesheets=[
-                dbc.themes.BOOTSTRAP], title="Agriculture Dashboard")
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
+                title="Agriculture Dashboard")
 # Define the style dictionary
 style = {
     'width': '33%',
@@ -257,6 +262,37 @@ def create_cards():
                 ]),
                 style={'backgroundColor': '#f8f9fa',
                        'boxShadow': '0 4px 8px rgba(0,0,0,0.2)', 'borderRadius': '10px', 'padding': '20px', 'flex': '0 0 200px', 'marginRight': '10px'}
+            ),
+        ]
+    )
+
+# Function to create a circular button and modal
+
+
+def create_circular_modal(id_prefix, message):
+    return html.Div(
+        [
+            dbc.Button(
+                # Bootstrap icon class for question mark
+                html.I(className="bi bi-question-circle"),
+                id=f"{id_prefix}-open",  # Dynamic id for the open button
+                color="primary",
+                n_clicks=0,
+                style={"borderRadius": "50%", "width": "50px",
+                       "height": "50px", "padding": "10px", "textAlign": "center"}
+            ),
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        "Help")),
+                    dbc.ModalBody(id=f"{id_prefix}-body", children=message),
+                    dbc.ModalFooter(
+                        dbc.Button(
+                            "Close", id=f"{id_prefix}-close", className="ms-auto", n_clicks=0)
+                    ),
+                ],
+                id=f"{id_prefix}-modal",  # Dynamic id for the modal
+                is_open=False,
             ),
         ]
     )
@@ -513,14 +549,18 @@ app.layout = dbc.Container(
 
 
         # TOTAL CROP YIELD THROUGH THE YEARS ########################################
-        html.H1(children="Total Crop yield through the years"),
-        daq.ToggleSwitch(
-            id='start-tutorial',
-            label='Help',
-            labelPosition='bottom',
-            value=False,
-            color='green'
-        ),
+
+        html.Div(className="container mt-5 d-flex justify-content-center  align-items-center", style={'display': 'flex', 'alignItems': 'center'},
+                 children=[html.H1(children="Total Crop yield through the years", style={"margin": "20px", "lineHeight": "50px"}),
+                           create_circular_modal("modal1", "Click on a point in the line graph to see the crop distribution for that year."),]),
+
+        # daq.ToggleSwitch(
+        #     id='start-tutorial',
+        #     label='Help',
+        #     labelPosition='bottom',
+        #     value=False,
+        #     color='green'
+        # ),
         # Store for current tutorial step
         dcc.Store(id='current-step-store', data={'step': 0}),
 
@@ -600,37 +640,50 @@ app.layout = dbc.Container(
 # Callback to control tutorial steps
 
 
-@app.callback(
-    Output('tutorial-overlay', 'style'),
-    Output('tutorial-overlay', 'children'),
-    Output('start-tutorial', 'value'),  # Output for the toggle switch
-    Input('start-tutorial', 'value'),
-    Input('line-graph', 'clickData'),  # Check for click data on line graph
-    Input('back-button', 'n_clicks'),   # Check for back button clicks
-)
-def update_tutorial(start_tutorial, clickData, n_clicks):
-    # Tutorial steps
-    steps = [
-        {'content': 'Click on a point in the line graph to see the crop distribution for that year.'},
-        {'content': 'This pie chart shows the distribution of crop values for the selected year. Use the back button to return.'}
-    ]
+@app.callback(Output('modal1-body', 'children'),
+              Input('line-graph', 'clickData'),
+              Input('back-button', 'n_clicks')
+              )
+def update_help_message(clickData, n_clicks):
+    if n_clicks: # If back button is clicked
+        return "Click on a point in the line graph to see the crop distribution for that year."
+    elif clickData:
+        return "This pie chart shows the distribution of crop values for the selected year. Use the back button to return."
+    
+    return "Click on a point in the line graph to see the crop distribution for that year."
 
-    # If the tutorial is started
-    if start_tutorial:
-        if n_clicks:  # If back button is clicked
-            # Hide the tutorial and turn off the toggle
-            return {'display': 'none'}, "", False
 
-        if clickData:  # If a point on the line graph is clicked
-            # Show pie chart tutorial step
-            return {'display': 'block'}, steps[1]['content'], True
+# @app.callback(
+#     Output('tutorial-overlay', 'style'),
+#     Output('tutorial-overlay', 'children'),
+#     # Output('start-tutorial', 'value'),  # Output for the toggle switch
+#     # Input('start-tutorial', 'value'),
+#     Input('line-graph', 'clickData'),  # Check for click data on line graph
+#     Input('back-button', 'n_clicks'),   # Check for back button clicks
+# )
+# def update_tutorial(start_tutorial, clickData, n_clicks):
+#     # Tutorial steps
+#     steps = [
+#         {'content': 'Click on a point in the line graph to see the crop distribution for that year.'},
+#         {'content': 'This pie chart shows the distribution of crop values for the selected year. Use the back button to return.'}
+#     ]
 
-        # If no interaction yet, show the first step
-        # Show line graph tutorial step
-        return {'display': 'block'}, steps[0]['content'], True
+#     # If the tutorial is started
+#     if start_tutorial:
+#         if n_clicks:  # If back button is clicked
+#             # Hide the tutorial and turn off the toggle
+#             return {'display': 'none'}, "", False
 
-    # If the tutorial is not active and back button is not clicked, ensure to reset
-    return {'display': 'none'}, "", False  # Reset tutorial when not active
+#         if clickData:  # If a point on the line graph is clicked
+#             # Show pie chart tutorial step
+#             return {'display': 'block'}, steps[1]['content'], True
+
+#         # If no interaction yet, show the first step
+#         # Show line graph tutorial step
+#         return {'display': 'block'}, steps[0]['content'], True
+
+#     # If the tutorial is not active and back button is not clicked, ensure to reset
+#     return {'display': 'none'}, "", False  # Reset tutorial when not active
 
 
 # Tutorial
@@ -862,6 +915,32 @@ def update_map(selected_crop, selected_year, selected_attribute):
 
     # Return the map as an iframe
     return html.Iframe(srcDoc=folium_map._repr_html_(), width='100%', height='600')
+
+# Callback to toggle the modal for modal1
+
+
+@app.callback(
+    Output("modal1-modal", "is_open"),
+    [Input("modal1-open", "n_clicks"), Input("modal1-close", "n_clicks")],
+    [State("modal1-modal", "is_open")],
+)
+def toggle_modal1(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
+# Callback to toggle the modal for modal2
+
+
+# @app.callback(
+#     Output("modal2-modal", "is_open"),
+#     [Input("modal2-open", "n_clicks"), Input("modal2-close", "n_clicks")],
+#     [State("modal2-modal", "is_open")],
+# )
+# def toggle_modal2(n1, n2, is_open):
+#     if n1 or n2:
+#         return not is_open
+#     return is_open
 
 
 def on_message(channel, method_frame, header_frame, body):
