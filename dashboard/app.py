@@ -474,7 +474,7 @@ app.layout = dbc.Container(
                 # Scatter plot
                 # Make the graph flexible and responsive
                 html.Div(
-                    className='col-xl-6 col-lg-6 col-md-6 mb-6',  # Responsive columns
+                    className='col-xl-7 col-lg-7 col-md-7 mb-7',  # Responsive columns
                     children=[
                         dcc.Graph(id='scatter-plot',
                                   style={'flex': '1 1 60%', 'min-width': '300px'}),
@@ -484,7 +484,7 @@ app.layout = dbc.Container(
 
                 # Gauge meters
                 html.Div(
-                    className='col-xl-6 col-lg-6 col-md-6',
+                    className='col-xl-5 col-lg-5 col-md-5',
                     style={'display': 'flex', 'flex-direction': 'column', 'flex': '1 1 30%',
                            'min-width': '250px', 'margin-left': '20px'},  # Flexible layout for the gauges
                     children=[
@@ -706,8 +706,21 @@ def update_scatter_plot(item_name, weather_column):
         labels={
             'x': f"{item_name} Production ({value_column}) - Scaled", 'y': f"{FEATURE_NAMES[weather_column]} - Scaled"},
         title=f"Scatter Plot: {item_name} Production vs. {FEATURE_NAMES[weather_column]}",
-        width=700,  # Set the width
+        # width=700,  # Set the width
         height=700
+    )
+    
+    fig.update_layout(
+        title={
+            'text': f"Scatter Plot: {item_name} Production<br>vs. {FEATURE_NAMES[weather_column]}",  # Break into two lines if too long
+            'y': 0.95,  # Adjust vertical positioning
+            'x': 0.5,  # Center the title horizontally
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': {
+                'size': 18  
+            }
+        },
     )
 
     # Add correlation annotation to the plot
