@@ -9,7 +9,10 @@ from retry_requests import retry
 import time
 from sqlalchemy import create_engine, text
 
-GOAL_FILE = '../data/LEGACY_final_yearly_merged_data.csv'
+if os.path.exists('/data/weather') == False:
+    os.makedirs('/data/weather')
+
+GOAL_FILE = '/data/final_yearly_merged_data.csv'
 
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
@@ -50,9 +53,9 @@ if os.path.exists(GOAL_FILE):
     exit(1)
 
 
-if os.path.exists('../data/yearly_average_merged_data.csv') == False:
-    # folder_path = '/data/weatherhis'
-    folder_path = '../data/weatherhis'
+if os.path.exists('/data/weather/yearly_average_merged_data.csv') == False:
+    # folder_path = '/data/weather/weatherhis'
+    folder_path = '/data/weather/weatherhis'
 
     # List all files in the directory
     files = os.listdir(folder_path)
@@ -107,8 +110,8 @@ if os.path.exists('../data/yearly_average_merged_data.csv') == False:
         # 'outer' to keep all dates, adjust to 'inner' if you only want common dates
         merged_df = pd.merge(merged_df, df, on='Month-Year', how='inner')
 
-    # FILENAME = '/data/merged_data.csv'
-    FILENAME = '../data/merged_data_dirty.csv'
+    # FILENAME = '/data/weather/merged_data.csv'
+    FILENAME = '/data/weather/merged_data_dirty.csv'
 
     merged_df = merged_df.drop(columns="Diurnal Temperature Range")
     merged_df.to_csv(FILENAME, index=False)
@@ -126,11 +129,22 @@ if os.path.exists('../data/yearly_average_merged_data.csv') == False:
     # Drop the 'Month-Year' column as it's no longer needed
     df_filtered = df_filtered.drop(columns=['Month-Year'])
 
+    # agg_funcs = {col: 'mean' for col in df_filtered.columns if col not in [
+    #     df_filtered.columns[2], df_filtered.columns[9]]}  # Mean for all except 2 and 9
+    # agg_funcs[df_filtered.columns[2]] = 'sum'  # Sum for column 2
+    # agg_funcs[df_filtered.columns[9]] = 'sum'  # Sum for column 9
+
+    # 3rd potential evapo-transpiration -> 10th
+    # 10th Wet days -> 9th
     # Define the aggregation functions for each column
-    agg_funcs = {col: 'mean' for col in df_filtered.columns if col not in [
-        df_filtered.columns[2], df_filtered.columns[9]]}  # Mean for all except 2 and 9
-    agg_funcs[df_filtered.columns[2]] = 'sum'  # Sum for column 2
-    agg_funcs[df_filtered.columns[9]] = 'sum'  # Sum for column 9
+    SUM_INSTEAD_OF_MEAN = ["Frost days", "Wet days"]
+
+    # Mean for all except 2 and 9
+    agg_funcs = {
+        col: 'mean' for col in df_filtered.columns if col not in SUM_INSTEAD_OF_MEAN}
+
+    for col in SUM_INSTEAD_OF_MEAN:
+        agg_funcs[col] = 'sum'
 
     # Group by 'Year' and apply the aggregation functions
     df_yearly_avg = df_filtered.groupby('Year').agg(agg_funcs)
@@ -140,19 +154,21 @@ if os.path.exists('../data/yearly_average_merged_data.csv') == False:
     # print(df_filtered['Year'].unique())
     # Display the first few rows of the final DataFrame
 
-    df_yearly_avg.to_csv('../data/yearly_average_merged_data.csv', index=True)
+    df_yearly_avg.to_csv(
+        '/data/weather/yearly_average_merged_data.csv', index=True)
 
 else:
-    df_yearly_avg = pd.read_csv('../data/yearly_average_merged_data.csv')
+    df_yearly_avg = pd.read_csv(
+        '/data/weather/yearly_average_merged_data.csv')
 
 # Load the yearly_average_merged_data.csv
-yearly_data = pd.read_csv('../data/yearly_average_merged_data.csv')
+yearly_data = pd.read_csv('/data/weather/yearly_average_merged_data.csv')
 
 # Path to the folder containing the .txt files
-folder_path = r'../data/weatherhis'
+folder_path = r'/data/weather/weatherhis'
 
 
-if os.path.exists('../data/yearly_average_merged_data_with_all_txt.csv') == False:
+if os.path.exists('/data/weather/yearly_average_merged_data_with_all_txt.csv') == False:
     # Get all .txt files in the folder
     txt_files = glob.glob(os.path.join(folder_path, '*.txt'))
 
@@ -187,7 +203,7 @@ if os.path.exists('../data/yearly_average_merged_data_with_all_txt.csv') == Fals
             print(f"Skipping {txt_file}, required columns not found.")
 
     # Save the updated yearly data to a new CSV file
-    output_file = folder_path+'/yearly_average_merged_data_with_all_txt.csv'
+    output_file = '/data/weather/yearly_average_merged_data_with_all_txt.csv'
     yearly_data.to_csv(output_file, index=False)
 
     print(
@@ -195,11 +211,11 @@ if os.path.exists('../data/yearly_average_merged_data_with_all_txt.csv') == Fals
 
 else:
     yearly_data = pd.read_csv(
-        '../data/yearly_average_merged_data_with_all_txt.csv')
+        '/data/weather/yearly_average_merged_data_with_all_txt.csv')
 
 # --------------------------------------------------------------------------------------
 
-if os.path.exists('../data/weather_data_with_Allcities.csv') == False:
+if os.path.exists('/data/weather/weather_data_with_Allcities.csv') == False:
 
     # Step 1: Create a geolocator object
     geolocator = Nominatim(user_agent="my_geocoder_app", timeout=10)
@@ -280,12 +296,14 @@ if os.path.exists('../data/weather_data_with_Allcities.csv') == False:
 
     # Merge all DataFrames by appending rows
     merged_data = pd.concat(all_dataframes, ignore_index=True)
-    merged_data.to_csv('../data/weather_data_with_Allcities.csv', index=False)
+    merged_data.to_csv(
+        '/data/weather/weather_data_with_Allcities.csv', index=False)
     # Display the merged DataFrame
     # print(merged_data.head(5))
 
 else:
-    merged_data = pd.read_csv('../data/weather_data_with_Allcities.csv')
+    merged_data = pd.read_csv(
+        '/data/weather/weather_data_with_Allcities.csv')
 
 # --------------------------------------------------------------------------------------
 
@@ -306,7 +324,7 @@ yearly_averages = merged_data_Y.groupby('Year').mean().reset_index()
 # Display the result
 # print(yearly_averages.head())
 
-# yearly_averages.to_csv('/data/yearly_averages_open_meteo.csv', index=False)
+# yearly_averages.to_csv('/data/weather/yearly_averages_open_meteo.csv', index=False)
 
 # --------------------------------------------------------------------------------------
 
@@ -316,11 +334,9 @@ merged_data_norm = merged_data_norm.drop(columns="daylight_duration")
 # print(merged_data_norm.to_string())
 # print(yearly_data.columns)
 # print(yearly_data.head())
-# merged_data_norm.to_csv('C:/Users/stili/OneDrive/Desktop/yearly_averages_open_meteo_norm.csv', index=False)
 final_merged = yearly_data.merge(merged_data_norm, on='Year', how='inner')
 # print(final_merged.to_string())
 final_merged.to_csv(GOAL_FILE, index=False)
-
 
 load_data_to_database(GOAL_FILE)
 # --------------------------------------------------------------------------------------
