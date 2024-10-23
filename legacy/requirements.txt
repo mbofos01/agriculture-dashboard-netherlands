@@ -1,0 +1,9 @@
+datetime
+glob2
+geopy
+openmeteo_requests
+requests_cache
+pandas
+retry_requests
+psycopg2-binary==2.9.10
+SQLAlchemy==2.0.36
