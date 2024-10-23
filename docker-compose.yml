@@ -30,6 +30,11 @@ services:
       - db_dashboard-data:/var/lib/postgresql/data/
       - ./database/init_data.sql:/docker-entrypoint-initdb.d/init_data.sql
     container_name: database
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U student -d dashboard'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   extract:
     container_name: extract
@@ -145,7 +150,8 @@ services:
     volumes:
       - ./data:/data
     depends_on:
-      - database
+      database:
+        condition: service_healthy
       
 volumes:
   data:
