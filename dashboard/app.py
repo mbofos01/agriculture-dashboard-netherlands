@@ -453,83 +453,6 @@ app.layout = dbc.Container(
                     id='feature-graph'),
             ])
         ]),
-        # html.Div([
-        #     html.Div(className="container mt-5 d-flex justify-content-center  align-items-center", style={'display': 'flex', 'alignItems': 'center'},
-        #          children=[html.H1(children="Province Information", style={"margin": "20px", "lineHeight": "50px"}),
-        #                    create_circular_modal("modal2", "Click on a province to see the weather details for that year."),]),
-        #     html.Div(
-        #         style={
-        #             'display': 'flex',
-        #             'justifyContent': 'center',  # Center horizontally
-        #             'alignItems': 'center',  # Center vertically if needed
-        #             'gap': '10px',  # Reduced space between dropdowns
-        #             'padding': '20px'  # Optional padding around the container
-        #         },
-        #         children=[
-        #             dcc.Dropdown(
-        #                 id='crop-dropdown',
-        #                 options=[{'label': crop, 'value': crop}
-        #                          for crop in cbs_arable_crops],
-        #                 value=cbs_arable_crops[0],  # Default value
-        #                 className='dropdown-container',
-        #                 clearable=False,
-        #                 searchable=True,
-        #                 style={
-        #                     'width': '400px',  # Increased width for better visibility
-        #                     'fontSize': '16px',  # Increase font size for better readability
-        #                     'border': '1px solid #ccc',  # Light border
-        #                     'backgroundColor': '#f9f9f9',  # Light background color
-        #                     'color': '#333',  # Text color
-        #                 },
-        #                 optionHeight=60
-
-        #             ),
-        #             dcc.Dropdown(
-        #                 id='year-dropdown',
-        #                 options=[{'label': str(year), 'value': year}
-        #                          for year in cbs_years],
-        #                 value=cbs_years[-1],  # Default value
-        #                 className='dropdown-container',
-        #                 clearable=False,
-        #                 searchable=True,
-        #                 style={
-        #                     'width': '400px',  # Increased width for better visibility
-        #                     'fontSize': '16px',  # Increase font size for better readability
-        #                     'border': '1px solid #ccc',  # Light border
-        #                     'backgroundColor': '#f9f9f9',  # Light background color
-        #                     'color': '#333',  # Text color
-        #                 },
-        #                 optionHeight=60
-
-        #             ),
-        #             dcc.Dropdown(
-        #                 id='attribute-dropdown',
-        #                 options=[{'label': ATTRIBUTE_LABEL[index], 'value': index}
-        #                          for index, attr in enumerate(ATTRIBUTES)],
-        #                 value=0,  # Default value
-        #                 className='dropdown-container',
-        #                 clearable=False,
-        #                 searchable=True,
-        #                 style={
-        #                     'width': '400px',  # Increased width for better visibility
-        #                     'fontSize': '16px',  # Increase font size for better readability
-        #                     'border': '1px solid #ccc',  # Light border
-        #                     'backgroundColor': '#f9f9f9',  # Light background color
-        #                     'color': '#333',  # Text color
-        #                 },
-        #                 optionHeight=60
-
-        #             ),
-        #         ]
-        #     ),
-        #     html.Div(
-        #         className='d-flex justify-content-center mx-auto',  # Centering classes
-        #         children=[
-        #             # Map container with a set width
-        #             html.Div(id='map-container', style={'width': '80%'})
-        #         ]
-        #     )
-        # ]),
 
         # WEATHER AND CROP DATA VISUALIZATION #######################################
         html.H1(children="Weather and Crop Data Visualization"),
@@ -770,35 +693,6 @@ app.layout = dbc.Container(
 
     ])
 # Tutorial
-# Callback to control tutorial steps
-
-
-@app.callback(Output('modal1-body', 'children'),
-              Input('line-graph', 'clickData'),
-              Input('back-button', 'n_clicks'),
-              )
-def update_help_message(clickData, n_clicks):
-    if n_clicks:  # If back button is clicked
-        return "Click on a point in the line graph to see the crop distribution for that year."
-    elif clickData:
-        return "This pie chart shows the distribution of crop values for the selected year. Use the back button to return."
-
-    return "Click on a point in the line graph to see the crop distribution for that year."
-
-
-@app.callback(Output('modal2-body', 'children'),
-              Input('line-graph', 'clickData'),
-              Input('back-button', 'n_clicks')
-              )
-def update_help_message_map(clickData, n_clicks):
-    if n_clicks:  # If back button is clicked
-        return "Click on a province to see the weather details for that year."
-    elif clickData:
-        return "==================================="
-
-    return "Press the back button to go back to the national map."
-
-
 # @app.callback(
 #     Output('tutorial-overlay', 'style'),
 #     Output('tutorial-overlay', 'children'),
@@ -964,6 +858,7 @@ def update_line_graph(_):
     Output('pie-chart', 'figure'),
     Output('pie-chart', 'style'),
     Output('back-button', 'style'),
+    Output('modal1-body', 'children'),
     Input('line-graph', 'clickData'),
     Input('back-button', 'n_clicks'),
     State('line-graph', 'style'),
@@ -1000,12 +895,12 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
         )
 
         # Show pie chart, hide line chart, and show the "Back" button
-        return {'display': 'none'}, pie_fig, {'display': 'block'}, {'display': 'block'}
+        return {'display': 'none'}, pie_fig, {'display': 'block'}, {'display': 'block'}, "This pie chart shows the distribution of crop values for the selected year. Use the back button to return."
 
     if n_clicks:
-        return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}
+        return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}, "Click on a point in the line graph to see the crop distribution for that year."
 
-    return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}
+    return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}, "Click on a point in the line graph to see the crop distribution for that year."
 
 # --------------------------------------------------------------------------------
 
@@ -1128,6 +1023,7 @@ def update_map(selected_crop, selected_year, selected_attribute):
     Output('selected-year', 'data'),
     Output('province-name', 'data'),
     Output('map-header-name', 'children'),
+    Output('modal2-body', 'children'),
     Input('choropleth-map', 'clickData'),
     Input('back-button-map', 'n_clicks'),
     Input('year-dropdown', 'value'),
@@ -1152,14 +1048,14 @@ def toggle_views(clickData, n_clicks, year):
     }
 
     if n_clicks:
-        return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None, MAP_VIEW
+        return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None, MAP_VIEW, "Click on a province to see the weather details for that year."
 
     if clickData:
         province_index = clickData['points'][0]['location']
         province_name = MAP_DATA.loc[province_index, 'name']
-        return {'display': 'none'}, {'display': 'block'}, 0, hidden_toolbar_style, None, year, province_name, PLOT_VIEW
+        return {'display': 'none'}, {'display': 'block'}, 0, hidden_toolbar_style, None, year, province_name, PLOT_VIEW, "You can go back to the national map by clicking the back button."
 
-    return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None, MAP_VIEW
+    return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None, MAP_VIEW, "Click on a province to see the weather details for that year."
 
 # --------------------------------------------------------------------------------
 # Callback to toggle the modal for modal1
