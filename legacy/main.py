@@ -111,7 +111,7 @@ if os.path.exists('/data/weather/yearly_average_merged_data.csv') == False:
         merged_df = pd.merge(merged_df, df, on='Month-Year', how='inner')
 
     # FILENAME = '/data/weather/merged_data.csv'
-    FILENAME = '/data/weather/merged_data_dirty.csv'
+    FILENAME = '/data/weather/merged_data.csv'
 
     merged_df = merged_df.drop(columns="Diurnal Temperature Range")
     merged_df.to_csv(FILENAME, index=False)
