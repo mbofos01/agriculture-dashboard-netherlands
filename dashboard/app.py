@@ -337,7 +337,7 @@ app.layout = dbc.Container(
         ], fluid=True),
 
         # MAP OF NETHERLANDS #######################################################
-        html.Div([
+        html.Div(className="container-fluid", children=[
             dcc.Store(id='selected-year'),  # Store to hold province name
             dcc.Store(id='province-name'),  # Store to hold province name
 
@@ -418,7 +418,7 @@ app.layout = dbc.Container(
                 ]
             ),
             html.Div(id="year-weather-data", style={'display': 'none'}, children=[
-                dbc.Row([
+                dbc.Row(style={'justify-content': 'center'}, children=[
                     dbc.Col(
                         dcc.Dropdown(
                             id='feature-dropdown',
@@ -437,13 +437,13 @@ app.layout = dbc.Container(
                             clearable=False,
                         ),
                         # Adjust the width as needed (1-12)
-                        width=8,
+                        width=6,
                     ),
                     dbc.Col(
                         html.Button("Back to Map", style={
                             'display': 'block'}, id="back-button-map", n_clicks=0),
                         # Adjust the width as needed (1-12)
-                        width=4,
+                        width=2,
                         # Optional: align button to the right
                         style={
                             'textAlign': 'right'}
@@ -775,7 +775,7 @@ app.layout = dbc.Container(
 
 @app.callback(Output('modal1-body', 'children'),
               Input('line-graph', 'clickData'),
-              Input('back-button', 'n_clicks')
+              Input('back-button', 'n_clicks'),
               )
 def update_help_message(clickData, n_clicks):
     if n_clicks:  # If back button is clicked
