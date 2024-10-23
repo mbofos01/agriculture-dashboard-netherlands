@@ -29,6 +29,7 @@ import os
 from sqlalchemy import create_engine, text, inspect, Table
 import geopandas as gpd
 import folium
+from meteo_api import get_data
 
 ATTRIBUTES = ['AreaUnderCultivation_1', 'HarvestedArea_2',
               'GrossYieldPerHa_3', 'GrossYieldTotal_4']
@@ -50,7 +51,7 @@ def log_action(service_name, message):
 SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
 INDICATOR = SERVER_SERVICE_NAME.upper()[0]
 SERVER_QUEUE = os.getenv('SERVER_QUEUE', 'server_queue')
-cbs_arable_crops, cbs_years, cbs_municipal_boundaries, CBS = None, None, None, None
+cbs_arable_crops, cbs_years, cbs_municipal_boundaries, CBS, MAP_DATA = None, None, None, None, None
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
 
@@ -126,11 +127,12 @@ def load_and_prepare_data(ch, method, properties, body):
         data = result.fetchall()
         columns = result.keys()
         yearly_average_merged_data = pd.DataFrame(data, columns=columns)
-        yearly_average_merged_data = yearly_average_merged_data.drop('index', axis=1)
+        yearly_average_merged_data = yearly_average_merged_data.drop(
+            'index', axis=1)
 
     log_action(SERVER_SERVICE_NAME,
                f"Loaded {yearly_average_merged_data.shape[0]} rows from Weather")
-    
+
     # LOAD WEATHER DATA
     # yearly_average_merged_data = pd.read_csv(
     #     "/data/final_yearly_merged_data.csv")
@@ -336,82 +338,200 @@ app.layout = dbc.Container(
 
         # MAP OF NETHERLANDS #######################################################
         html.Div([
+            dcc.Store(id='selected-year'),  # Store to hold province name
+            dcc.Store(id='province-name'),  # Store to hold province name
+
             html.Div(className="container mt-5 d-flex justify-content-center  align-items-center", style={'display': 'flex', 'alignItems': 'center'},
                  children=[html.H1(children="Province Information", style={"margin": "20px", "lineHeight": "50px"}),
                            create_circular_modal("modal2", "Click on a province to see the weather details for that year."),]),
-            html.Div(
-                style={
-                    'display': 'flex',
-                    'justifyContent': 'center',  # Center horizontally
-                    'alignItems': 'center',  # Center vertically if needed
-                    'gap': '10px',  # Reduced space between dropdowns
-                    'padding': '20px'  # Optional padding around the container
-                },
-                children=[
-                    dcc.Dropdown(
-                        id='crop-dropdown',
-                        options=[{'label': crop, 'value': crop}
-                                 for crop in cbs_arable_crops],
-                        value=cbs_arable_crops[0],  # Default value
-                        className='dropdown-container',
-                        clearable=False,
-                        searchable=True,
-                        style={
-                            'width': '400px',  # Increased width for better visibility
-                            'fontSize': '16px',  # Increase font size for better readability
-                            'border': '1px solid #ccc',  # Light border
-                            'backgroundColor': '#f9f9f9',  # Light background color
-                            'color': '#333',  # Text color
-                        },
-                        optionHeight=60
+            html.Div(id="map-tool-bar",
+                     style={
+                         'display': 'flex',
+                         'justifyContent': 'center',  # Center horizontally
+                         'alignItems': 'center',  # Center vertically if needed
+                         'gap': '10px',  # Reduced space between dropdowns
+                         'padding': '20px'  # Optional padding around the container
+                     },
+                     children=[
+                         dcc.Dropdown(
+                             id='crop-dropdown',
+                             options=[{'label': crop, 'value': crop}
+                                      for crop in cbs_arable_crops],
+                             value=cbs_arable_crops[0],  # Default value
+                             className='dropdown-container',
+                             clearable=False,
+                             searchable=True,
+                             style={
+                                 'width': '400px',  # Increased width for better visibility
+                                 'fontSize': '16px',  # Increase font size for better readability
+                                 'border': '1px solid #ccc',  # Light border
+                                 'backgroundColor': '#f9f9f9',  # Light background color
+                                 'color': '#333',  # Text color
+                             },
+                             optionHeight=60
 
-                    ),
-                    dcc.Dropdown(
-                        id='year-dropdown',
-                        options=[{'label': str(year), 'value': year}
-                                 for year in cbs_years],
-                        value=cbs_years[-1],  # Default value
-                        className='dropdown-container',
-                        clearable=False,
-                        searchable=True,
-                        style={
-                            'width': '400px',  # Increased width for better visibility
-                            'fontSize': '16px',  # Increase font size for better readability
-                            'border': '1px solid #ccc',  # Light border
-                            'backgroundColor': '#f9f9f9',  # Light background color
-                            'color': '#333',  # Text color
-                        },
-                        optionHeight=60
+                         ),
+                         dcc.Dropdown(
+                             id='year-dropdown',
+                             options=[{'label': str(year), 'value': year}
+                                      for year in cbs_years],
+                             value=cbs_years[-1],  # Default value
+                             className='dropdown-container',
+                             clearable=False,
+                             searchable=True,
+                             style={
+                                 'width': '400px',  # Increased width for better visibility
+                                 'fontSize': '16px',  # Increase font size for better readability
+                                 'border': '1px solid #ccc',  # Light border
+                                 'backgroundColor': '#f9f9f9',  # Light background color
+                                 'color': '#333',  # Text color
+                             },
+                             optionHeight=60
 
-                    ),
-                    dcc.Dropdown(
-                        id='attribute-dropdown',
-                        options=[{'label': ATTRIBUTE_LABEL[index], 'value': index}
-                                 for index, attr in enumerate(ATTRIBUTES)],
-                        value=0,  # Default value
-                        className='dropdown-container',
-                        clearable=False,
-                        searchable=True,
-                        style={
-                            'width': '400px',  # Increased width for better visibility
-                            'fontSize': '16px',  # Increase font size for better readability
-                            'border': '1px solid #ccc',  # Light border
-                            'backgroundColor': '#f9f9f9',  # Light background color
-                            'color': '#333',  # Text color
-                        },
-                        optionHeight=60
+                         ),
+                         dcc.Dropdown(
+                             id='attribute-dropdown',
+                             options=[{'label': ATTRIBUTE_LABEL[index], 'value': index}
+                                      for index, attr in enumerate(ATTRIBUTES)],
+                             value=0,  # Default value
+                             className='dropdown-container',
+                             clearable=False,
+                             searchable=True,
+                             style={
+                                 'width': '400px',  # Increased width for better visibility
+                                 'fontSize': '16px',  # Increase font size for better readability
+                                 'border': '1px solid #ccc',  # Light border
+                                 'backgroundColor': '#f9f9f9',  # Light background color
+                                 'color': '#333',  # Text color
+                             },
+                             optionHeight=60
 
-                    ),
-                ]
-            ),
+                         ),
+                     ]
+                     ),
             html.Div(
                 className='d-flex justify-content-center mx-auto',  # Centering classes
                 children=[
                     # Map container with a set width
-                    html.Div(id='map-container', style={'width': '80%'})
+                    html.Div(id='map-container',
+                             style={'width': '80%'}, children=[dcc.Graph(id='choropleth-map'),])
                 ]
-            )
+            ),
+            html.Div(id="year-weather-data", style={'display': 'none'}, children=[
+                html.H1(
+                    "Weather Feature Plotting"),
+                dbc.Row([
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id='feature-dropdown',
+                            options=[
+                                {'label': 'Minimum Temperature',
+                                 'value': 'temperature_2m_min'},
+                                {'label': 'Mean Temperature',
+                                 'value': 'temperature_2m_mean'},
+                                {'label': 'Rain Sum', 'value': 'rain_sum'},
+                                {'label': 'Max Wind Speed',
+                                    'value': 'wind_speed_10m_max'},
+                                {'label': 'Max Wind Gusts',
+                                    'value': 'wind_gusts_10m_max'},
+                            ],
+                            value='temperature_2m_mean',  # Default value
+                            clearable=False,
+                        ),
+                        # Adjust the width as needed (1-12)
+                        width=8,
+                    ),
+                    dbc.Col(
+                        html.Button("Back to Map", style={
+                            'display': 'block'}, id="back-button-map", n_clicks=0),
+                        # Adjust the width as needed (1-12)
+                        width=4,
+                        # Optional: align button to the right
+                        style={
+                            'textAlign': 'right'}
+                    ),
+                ]),
+                dcc.Graph(
+                    id='feature-graph'),
+            ])
         ]),
+        # html.Div([
+        #     html.Div(className="container mt-5 d-flex justify-content-center  align-items-center", style={'display': 'flex', 'alignItems': 'center'},
+        #          children=[html.H1(children="Province Information", style={"margin": "20px", "lineHeight": "50px"}),
+        #                    create_circular_modal("modal2", "Click on a province to see the weather details for that year."),]),
+        #     html.Div(
+        #         style={
+        #             'display': 'flex',
+        #             'justifyContent': 'center',  # Center horizontally
+        #             'alignItems': 'center',  # Center vertically if needed
+        #             'gap': '10px',  # Reduced space between dropdowns
+        #             'padding': '20px'  # Optional padding around the container
+        #         },
+        #         children=[
+        #             dcc.Dropdown(
+        #                 id='crop-dropdown',
+        #                 options=[{'label': crop, 'value': crop}
+        #                          for crop in cbs_arable_crops],
+        #                 value=cbs_arable_crops[0],  # Default value
+        #                 className='dropdown-container',
+        #                 clearable=False,
+        #                 searchable=True,
+        #                 style={
+        #                     'width': '400px',  # Increased width for better visibility
+        #                     'fontSize': '16px',  # Increase font size for better readability
+        #                     'border': '1px solid #ccc',  # Light border
+        #                     'backgroundColor': '#f9f9f9',  # Light background color
+        #                     'color': '#333',  # Text color
+        #                 },
+        #                 optionHeight=60
+
+        #             ),
+        #             dcc.Dropdown(
+        #                 id='year-dropdown',
+        #                 options=[{'label': str(year), 'value': year}
+        #                          for year in cbs_years],
+        #                 value=cbs_years[-1],  # Default value
+        #                 className='dropdown-container',
+        #                 clearable=False,
+        #                 searchable=True,
+        #                 style={
+        #                     'width': '400px',  # Increased width for better visibility
+        #                     'fontSize': '16px',  # Increase font size for better readability
+        #                     'border': '1px solid #ccc',  # Light border
+        #                     'backgroundColor': '#f9f9f9',  # Light background color
+        #                     'color': '#333',  # Text color
+        #                 },
+        #                 optionHeight=60
+
+        #             ),
+        #             dcc.Dropdown(
+        #                 id='attribute-dropdown',
+        #                 options=[{'label': ATTRIBUTE_LABEL[index], 'value': index}
+        #                          for index, attr in enumerate(ATTRIBUTES)],
+        #                 value=0,  # Default value
+        #                 className='dropdown-container',
+        #                 clearable=False,
+        #                 searchable=True,
+        #                 style={
+        #                     'width': '400px',  # Increased width for better visibility
+        #                     'fontSize': '16px',  # Increase font size for better readability
+        #                     'border': '1px solid #ccc',  # Light border
+        #                     'backgroundColor': '#f9f9f9',  # Light background color
+        #                     'color': '#333',  # Text color
+        #                 },
+        #                 optionHeight=60
+
+        #             ),
+        #         ]
+        #     ),
+        #     html.Div(
+        #         className='d-flex justify-content-center mx-auto',  # Centering classes
+        #         children=[
+        #             # Map container with a set width
+        #             html.Div(id='map-container', style={'width': '80%'})
+        #         ]
+        #     )
+        # ]),
 
         # WEATHER AND CROP DATA VISUALIZATION #######################################
         html.H1(children="Weather and Crop Data Visualization"),
@@ -889,16 +1009,62 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
 
     return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}
 
+# --------------------------------------------------------------------------------
+
 
 @app.callback(
-    Output('map-container', 'children'),
+    Output('feature-graph', 'figure'),
+    Input('feature-dropdown', 'value'),
+    Input('selected-year', 'data'),
+    Input('province-name', 'data'),
+)
+def plot_weather(selected_feature, year, province):
+    # Check if year and province are provided
+    if not year or not province:
+        return go.Figure().update_layout(
+            title="Please select a province and a year",
+            template='plotly_white'
+        )
+
+    # Retrieve data
+    daily_dataframe = get_data(year, province)
+
+    # Check if the selected feature exists in the dataframe
+    if selected_feature not in daily_dataframe.columns:
+        return go.Figure().update_layout(
+            title="Data not available for selected feature",
+            template='plotly_white'
+        )
+
+    # Create the figure
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=daily_dataframe['date'],
+        y=daily_dataframe[selected_feature],
+        mode='lines+markers',
+        name=selected_feature.replace('_', ' ').title()
+    ))
+
+    # Update the layout
+    fig.update_layout(
+        title=f'{selected_feature.replace("_", " ").title()} Over Time for {province} in {year}',
+        xaxis_title='Date',
+        yaxis_title=selected_feature.replace('_', ' ').title(),
+        template='plotly_white'
+    )
+
+    return fig
+
+
+@app.callback(
+    Output('choropleth-map', 'figure'),
     [Input('crop-dropdown', 'value'),
      Input('year-dropdown', 'value'),
-     Input('attribute-dropdown', 'value')
+     Input('attribute-dropdown', 'value'),
      ]
 )
 def update_map(selected_crop, selected_year, selected_attribute):
-    global CBS, cbs_municipal_boundaries
+    global CBS, cbs_municipal_boundaries, MAP_DATA
     # Filter the data based on the selected crop and year
     filtered_data = CBS[
         (CBS['ArableCrops'] == selected_crop) &
@@ -911,39 +1077,90 @@ def update_map(selected_crop, selected_year, selected_attribute):
         r'\s*\(PV\)$', '', regex=True)
 
     # Merge with geodata
-    merged_data = pd.merge(cbs_municipal_boundaries,
-                           filtered_data, left_on="statnaam", right_on="name")
-    merged_data = merged_data.to_crs(epsg=4326)
+    MAP_DATA = pd.merge(cbs_municipal_boundaries, filtered_data,
+                        left_on="statnaam", right_on="name")
+    MAP_DATA = MAP_DATA.to_crs(epsg=4326)
 
-    # Create Folium map
+    # if MAP_DATA.empty or MAP_DATA[ATTRIBUTES[selected_attribute]].isnull().all():
+    #     return html.Div("No data available for the selected crop and year.", style={'textAlign': 'center', 'padding': '20px'})
+
+    fig = go.Figure()
+
+    # Add choropleth map layer
+    fig.add_trace(go.Choroplethmapbox(
+        geojson=MAP_DATA.geometry.__geo_interface__,  # Use the GeoJSON geometry
+        locations=MAP_DATA.index,
+        # Use the selected attribute for coloring
+        z=MAP_DATA[ATTRIBUTES[selected_attribute]],
+        colorscale=ATTRIBUTE_COLOR[selected_attribute],  # Color scale
+        # Update the colorbar title
+        colorbar_title=ATTRIBUTE_LABEL[selected_attribute],
+        marker_opacity=0.7,
+        marker_line_width=0,
+        hoverinfo='text',  # Specify that you want to display text on hover
+        # Show region name
+        hovertemplate='<b>Region:</b> %{customdata[0]}<br>' +
+                      '<b>Crop:</b> %{customdata[1]}<br>' +
+                      '<b>Year:</b> %{customdata[2]}<br>' +
+                      f'<b>{ATTRIBUTE_LABEL[selected_attribute]}:</b> %{{z}}<br>' +
+                      '<extra></extra>',  # Removes the secondary hover text
+        customdata=MAP_DATA[['name', 'ArableCrops', 'Periods']].values
+    ))
+
     nld_lat = 52.2130
     nld_lon = 5.2794
-    folium_map = folium.Map(location=[
-                            nld_lat, nld_lon], tiles='cartodbpositron', zoom_start=7, control_scale=True)
+    # Set the mapbox style to OpenStreetMap
+    fig.update_layout(
+        mapbox_style="open-street-map",  # Using OpenStreetMap style
+        mapbox_zoom=5.5,  # Set zoom level
+        mapbox_center={"lat": nld_lat, "lon": nld_lon},  # Center of the map
+        title_text="Harvested Area by Region",
+        height=600,  # Set height of the figure
+    )
 
-    tooltip = folium.GeoJsonTooltip(fields=['statnaam', ATTRIBUTES[selected_attribute]],
-                                    aliases=[
-                                        'Region:', f"{ATTRIBUTE_LABEL[selected_attribute]}:"],
-                                    localize=True)
+    return fig  # Return the figure as a dcc.Graph component
 
-    folium.Choropleth(
-        geo_data=merged_data,
-        data=merged_data,
-        columns=['statnaam', ATTRIBUTES[selected_attribute]],
-        key_on='feature.properties.statnaam',
-        fill_color=ATTRIBUTE_COLOR[selected_attribute],
-        fill_opacity=0.7,
-        line_color='black',
-        line_opacity=0.8,
-        legend_name=ATTRIBUTE_LABEL[selected_attribute],
-        highlight=True
-    ).add_to(folium_map)
 
-    folium.GeoJson(merged_data, tooltip=tooltip).add_to(folium_map)
+@app.callback(
+    Output('choropleth-map', 'style'),
+    Output('year-weather-data', 'style'),
+    Output('back-button-map', 'n_clicks'),
+    Output('map-tool-bar', 'style'),
+    Output('choropleth-map', 'clickData'),
+    Output('selected-year', 'data'),
+    Output('province-name', 'data'),
+    Input('choropleth-map', 'clickData'),
+    Input('back-button-map', 'n_clicks'),
+    Input('year-dropdown', 'value'),
+)
+def toggle_views(clickData, n_clicks, year):
+    global CBS, MAP_DATA
+    active_toolbar_style = {
+        'display': 'flex',
+        'justifyContent': 'center',  # Center horizontally
+        'alignItems': 'center',  # Center vertically if needed
+        'gap': '10px',  # Reduced space between dropdowns
+        'padding': '20px'  # Optional padding around the container
+    }
+    hidden_toolbar_style = {
+        'display': 'none',
+        'justifyContent': 'center',  # Center horizontally
+        'alignItems': 'center',  # Center vertically if needed
+        'gap': '10px',  # Reduced space between dropdowns
+        'padding': '20px'  # Optional padding around the container
+    }
 
-    # Return the map as an iframe
-    return html.Iframe(srcDoc=folium_map._repr_html_(), width='100%', height='600')
+    if n_clicks:
+        return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None
 
+    if clickData:
+        province_index = clickData['points'][0]['location']
+        province_name = MAP_DATA.loc[province_index, 'name']
+        return {'display': 'none'}, {'display': 'block'}, 0, hidden_toolbar_style, None, year, province_name
+
+    return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None
+
+# --------------------------------------------------------------------------------
 # Callback to toggle the modal for modal1
 
 
