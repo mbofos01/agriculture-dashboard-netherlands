@@ -8,7 +8,6 @@ import pandas as pd
 from retry_requests import retry
 import time
 from sqlalchemy import create_engine, text
-import pretty_errors
 
 GOAL_FILE = '../data/LEGACY_final_yearly_merged_data.csv'
 
@@ -113,7 +112,7 @@ if os.path.exists('../data/yearly_average_merged_data.csv') == False:
 
     merged_df = merged_df.drop(columns="Diurnal Temperature Range")
     merged_df.to_csv(FILENAME, index=False)
-    print(merged_df.columns)
+    # print(merged_df.columns)
     # -------------------------------------------------------------------------------------
     # FILTER FROM 1961 AND LATES AND CALCULATE THE AVERAGE
     # Extract the year from the 'Month-Year' column
@@ -137,9 +136,8 @@ if os.path.exists('../data/yearly_average_merged_data.csv') == False:
     df_yearly_avg = df_filtered.groupby('Year').agg(agg_funcs)
     df_yearly_avg = df_yearly_avg.drop(columns=['Year'])
     # df_yearly_avg = df_yearly_avg[['Year'] + [col for col in df_yearly_avg.columns if col != 'Year']]
-    print(df_yearly_avg.head())
-
-    print(df_filtered['Year'].unique())
+    # print(df_yearly_avg.head())
+    # print(df_filtered['Year'].unique())
     # Display the first few rows of the final DataFrame
 
     df_yearly_avg.to_csv('../data/yearly_average_merged_data.csv', index=True)
@@ -169,8 +167,8 @@ if os.path.exists('../data/yearly_average_merged_data_with_all_txt.csv') == Fals
         # Select the columns 'YEAR', 'MAM', 'JJA', 'SON', and 'DJF'
         if {'YEAR', 'MAM', 'JJA', 'SON', 'DJF'}.issubset(wet_data.columns):
             wet_columns = wet_data[['YEAR', 'MAM', 'JJA', 'SON', 'DJF']]
-            print(yearly_data.columns)
-            print(wet_columns.columns)
+            # print(yearly_data.columns)
+            # print(wet_columns.columns)
             # Merge with the yearly_data on 'Year'
             yearly_data = pd.merge(
                 yearly_data, wet_columns, how='left', left_on='Year', right_on='YEAR')
@@ -284,7 +282,7 @@ if os.path.exists('../data/weather_data_with_Allcities.csv') == False:
     merged_data = pd.concat(all_dataframes, ignore_index=True)
     merged_data.to_csv('../data/weather_data_with_Allcities.csv', index=False)
     # Display the merged DataFrame
-    print(merged_data.head(5))
+    # print(merged_data.head(5))
 
 else:
     merged_data = pd.read_csv('../data/weather_data_with_Allcities.csv')
@@ -316,14 +314,13 @@ yearly_averages = merged_data_Y.groupby('Year').mean().reset_index()
 merged_data_norm = yearly_averages
 merged_data_norm = merged_data_norm.drop(columns="daylight_duration")
 # print(merged_data_norm.to_string())
-print(yearly_data.columns)
-print(yearly_data.head())
+# print(yearly_data.columns)
+# print(yearly_data.head())
 # merged_data_norm.to_csv('C:/Users/stili/OneDrive/Desktop/yearly_averages_open_meteo_norm.csv', index=False)
 final_merged = yearly_data.merge(merged_data_norm, on='Year', how='inner')
-print(final_merged.to_string())
-# exit(1)
+# print(final_merged.to_string())
 final_merged.to_csv(GOAL_FILE, index=False)
 
 
-# load_data_to_database(GOAL_FILE)
+load_data_to_database(GOAL_FILE)
 # --------------------------------------------------------------------------------------
