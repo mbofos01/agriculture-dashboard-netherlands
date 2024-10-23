@@ -342,7 +342,7 @@ app.layout = dbc.Container(
             dcc.Store(id='province-name'),  # Store to hold province name
 
             html.Div(className="container mt-5 d-flex justify-content-center  align-items-center", style={'display': 'flex', 'alignItems': 'center'},
-                 children=[html.H1(children="Province Information", style={"margin": "20px", "lineHeight": "50px"}),
+                 children=[html.H1(children="Province Information", id="map-header-name", style={"margin": "20px", "lineHeight": "50px"}),
                            create_circular_modal("modal2", "Click on a province to see the weather details for that year."),]),
             html.Div(id="map-tool-bar",
                      style={
@@ -418,8 +418,6 @@ app.layout = dbc.Container(
                 ]
             ),
             html.Div(id="year-weather-data", style={'display': 'none'}, children=[
-                html.H1(
-                    "Weather Feature Plotting"),
                 dbc.Row([
                     dbc.Col(
                         dcc.Dropdown(
@@ -798,7 +796,7 @@ def update_help_message_map(clickData, n_clicks):
     elif clickData:
         return "==================================="
 
-    return "Click on a province to see the weather details for that year."
+    return "Press the back button to go back to the national map."
 
 
 # @app.callback(
@@ -1114,7 +1112,7 @@ def update_map(selected_crop, selected_year, selected_attribute):
         mapbox_style="open-street-map",  # Using OpenStreetMap style
         mapbox_zoom=5.5,  # Set zoom level
         mapbox_center={"lat": nld_lat, "lon": nld_lon},  # Center of the map
-        title_text="Harvested Area by Region",
+        title_text=f"{ATTRIBUTE_LABEL[selected_attribute]} by Region",
         height=600,  # Set height of the figure
     )
 
@@ -1129,12 +1127,15 @@ def update_map(selected_crop, selected_year, selected_attribute):
     Output('choropleth-map', 'clickData'),
     Output('selected-year', 'data'),
     Output('province-name', 'data'),
+    Output('map-header-name', 'children'),
     Input('choropleth-map', 'clickData'),
     Input('back-button-map', 'n_clicks'),
     Input('year-dropdown', 'value'),
 )
 def toggle_views(clickData, n_clicks, year):
     global CBS, MAP_DATA
+    MAP_VIEW = "Province Information"
+    PLOT_VIEW = "Weather Data per Year"
     active_toolbar_style = {
         'display': 'flex',
         'justifyContent': 'center',  # Center horizontally
@@ -1151,14 +1152,14 @@ def toggle_views(clickData, n_clicks, year):
     }
 
     if n_clicks:
-        return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None
+        return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None, MAP_VIEW
 
     if clickData:
         province_index = clickData['points'][0]['location']
         province_name = MAP_DATA.loc[province_index, 'name']
-        return {'display': 'none'}, {'display': 'block'}, 0, hidden_toolbar_style, None, year, province_name
+        return {'display': 'none'}, {'display': 'block'}, 0, hidden_toolbar_style, None, year, province_name, PLOT_VIEW
 
-    return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None
+    return {'display': 'block'}, {'display': 'none'}, 0, active_toolbar_style, None, year, None, MAP_VIEW
 
 # --------------------------------------------------------------------------------
 # Callback to toggle the modal for modal1
