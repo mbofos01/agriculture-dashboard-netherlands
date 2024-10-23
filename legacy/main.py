@@ -7,7 +7,7 @@ import requests_cache
 import pandas as pd
 from retry_requests import retry
 import time
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 
 if os.path.exists('/data/weather') == False:
     os.makedirs('/data/weather')
@@ -47,6 +47,12 @@ def load_data_to_database(active_file_name):
     except Exception as e:
         print(f"Something went wrong: {e}")
 
+
+# check if table "Weather" exists in the database
+inspector = inspect(engine)
+if "Weather" in inspector.get_table_names():
+    print("Table 'Weather' already exists in the database.")
+    exit(1)
 
 if os.path.exists(GOAL_FILE):
     load_data_to_database(GOAL_FILE)

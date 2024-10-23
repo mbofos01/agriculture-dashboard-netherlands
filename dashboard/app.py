@@ -99,6 +99,7 @@ def load_and_prepare_data(ch, method, properties, body):
     # FAOSTAT = pd.read_csv("/data/FAOSTAT_nozer.csv")
     FAOSTAT = None
     CBS = None
+    yearly_average_merged_data = None
 
     with engine.connect() as connection:
         # QCL is in quotes because of case sensitivity
@@ -120,8 +121,19 @@ def load_and_prepare_data(ch, method, properties, body):
                f"Loaded {CBS.shape[0]} rows from CBS")
 
     # LOAD WEATHER DATA
-    yearly_average_merged_data = pd.read_csv(
-        "/data/final_yearly_merged_data.csv")
+    with engine.connect() as connection:
+        result = connection.execute(text('SELECT * FROM "Weather"'))
+        data = result.fetchall()
+        columns = result.keys()
+        yearly_average_merged_data = pd.DataFrame(data, columns=columns)
+        yearly_average_merged_data = yearly_average_merged_data.drop('index', axis=1)
+
+    log_action(SERVER_SERVICE_NAME,
+               f"Loaded {yearly_average_merged_data.shape[0]} rows from Weather")
+    
+    # LOAD WEATHER DATA
+    # yearly_average_merged_data = pd.read_csv(
+    #     "/data/final_yearly_merged_data.csv")
 
     # with engine.connect() as connection:
     #     result = connection.execute(text("SELECT * FROM Weather"))

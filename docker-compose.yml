@@ -138,12 +138,14 @@ services:
         condition: on-failure
         max_attempts: 3
 
-  # legacy:
-  #   container_name: legacy
-  #   build:
-  #     context: ./legacy # Directory containing the Python Dockerfile
-  #   volumes:
-  #     - ./data:/data
+  legacy:
+    container_name: legacy
+    build:
+      context: ./legacy # Directory containing the Python Dockerfile
+    volumes:
+      - ./data:/data
+    depends_on:
+      - database
       
 volumes:
   data:
