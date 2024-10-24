@@ -23,38 +23,26 @@
 - Load inputs the new data to the database
 
 ```mermaid
+      graph TD
+        legacy -->|depends_on: service_healthy| database
+      
+        extract -->|depends_on: service_healthy| rabbitmq
+        extract -->|depends_on: service_started| transform
+        transform -->|depends_on: service_healthy| rabbitmq
+        transform -->|depends_on: service_started| load
+        load -->|depends_on: service_healthy| rabbitmq
+        server -->|depends_on: service_healthy| rabbitmq
+        server -->|depends_on: service_started| database
+        server -->|depends_on: service_started| load
+        server -->|depends_on: service_started| transform
+        server -->|depends_on: service_started| extract
 
-    graph TD;
-		
-		E -->|communicates with| W[Web]
 
-    E[Extract] -->|depends on & uses| R[RabbitMQ]
-    T[Transform] -->|depends on & uses| R
-    L[Load] -->|depends on & uses| R
-    
-    E --> |depends on| T
-    T --> |depends on| L
-    
-    E -->|shares| S[Shared Space]
-    T -->|shares| S[Shared Space]
-
-
-    subgraph Database
-        D[Postgres Database]
-    end
-
-  
-    L -->|connects to| D
-    L -->|shares| S[Shared Space]
-    
-     SE[Dashboard App] -->|connects to| D
-
-    style R fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
-    style E fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
-    style T fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
-    style L fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
-    style D fill:#bfb,stroke:#333,stroke-width:2px,color:#000;
-    style W fill:#FF6961,stroke:#333,stroke-width:2px,color:#000;
-    style S fill:#ADD8E6,stroke:#333,stroke-width:2px,color:#000;
-    style SE fill:#FFA500,stroke:#333,stroke-width:2px,color:#000;
+      style rabbitmq fill:#FF0000,stroke:#333,stroke-width:2px,color:#000;
+      style extract fill:#50C878,stroke:#333,stroke-width:2px,color:#000;
+      style transform fill:#e1c751,stroke:#333,stroke-width:2px,color:#000;
+      style load fill:#6588d0,stroke:#333,stroke-width:2px,color:#000;
+      style database fill:#008bb9,stroke:#333,stroke-width:2px,color:#000;
+      style server fill:#f4ce8d,stroke:#333,stroke-width:2px,color:#000;
+      style legacy fill:#8f5ec4,stroke:#333,stroke-width:2px,color:#000;
 ```
