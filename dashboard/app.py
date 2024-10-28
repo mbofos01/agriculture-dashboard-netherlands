@@ -1138,4 +1138,10 @@ if __name__ == '__main__':
     consumer_thread = Thread(target=rabbitmq_consumer, daemon=True)
     consumer_thread.start()
 
-    app.run_server(debug=True, host='0.0.0.0', port=8050, use_reloader=True)
+    _debug_ = os.getenv('DEBUG', 0)
+    if _debug_ == 0 or _debug_ == '0':
+        _debug_ = False
+    else:
+        _debug_ = True
+        
+    app.run_server(debug=_debug_, host='0.0.0.0', port=8050, use_reloader=True)
