@@ -82,15 +82,15 @@ Reducing the required maintenance was one of the principles in mind when designi
 
 1. FAOSTAT
     
-    The <a href=”https://pypi.org/project/faostat/”> official FAOSTAT Python library</a> was used to get up-to-date data regarding crop production.
+    The <a href="https://pypi.org/project/faostat/"> official FAOSTAT Python library</a> was used to get up-to-date data regarding crop production.
     
 2. CBS
     
-    The <a href=”https://pypi.org/project/cbsodata/”> official CBS Python library</a> was used to get up-to-date data regarding crop production in specific provinces of the Netherlands.
+    The <a href="https://pypi.org/project/cbsodata/"> official CBS Python library</a> was used to get up-to-date data regarding crop production in specific provinces of the Netherlands.
     
 3. OpenMeteo
     
-    The <a href=”https://open-meteo.com/en/docs/historical-weather-api”> Historical Weather API</a> provided by OpenMeteo was used to get weather data for the Netherlands as a whole and for each province separately. 
+    The <a href="https://open-meteo.com/en/docs/historical-weather-api"> Historical Weather API</a> provided by OpenMeteo was used to get weather data for the Netherlands as a whole and for each province separately. 
     
 
 ### Python Libraries
@@ -99,4 +99,4 @@ Each microservice includes a requirements.txt file that lists which Python modul
 
 ### Training
 
-No special training is necessary to utilize our system. A sophisticated logging feature has been developed, offering explanations of what is happening at all times. Our system is available via any web browser (<a href=”http://localhost:8050”> through port 8050</a>), and no prior knowledge or training is required to use it.
+No special training is necessary to utilize our system. A sophisticated logging feature has been developed, offering explanations of what is happening at all times. Our system is available via any web browser (<a href="http://localhost:8050">through port 8050</a>), and no prior knowledge or training is required to use it.
