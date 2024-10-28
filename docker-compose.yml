@@ -54,7 +54,6 @@ services:
       - LOAD_QUEUE=load_queue
       - TRANSFORM_QUEUE=transform_queue
       - SERVER_QUEUE=server_queue
-    restart: on-failure # Restart the container only on failure
     links:
       - rabbitmq
     volumes:
@@ -79,7 +78,6 @@ services:
       - LOAD_QUEUE=load_queue
       - TRANSFORM_QUEUE=transform_queue
       - SERVER_QUEUE=server_queue
-    restart: on-failure # Restart the container only on failure
     links:
       - rabbitmq
     volumes:
@@ -102,7 +100,6 @@ services:
       - LOAD_QUEUE=load_queue
       - TRANSFORM_QUEUE=transform_queue
       - SERVER_QUEUE=server_queue
-    restart: on-failure # Restart the container only on failure
     links:
       - rabbitmq
     volumes:
