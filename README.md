@@ -35,8 +35,8 @@ Our Dashboard application consists of multiple microservices that communicate wi
     
 2. RabbitMQ
     
-    RabbitMQ is an open-source message broker, that enables communication between microservices in our architecture. RabbitMQ creates a communication queue between two processes (services) allowing them to send and receive messages asynchronously. In our case, the exchanged messages are usually tasks assigned from one microservice to another.
-    
+    RabbitMQ is an open-source message broker, that enables communication between microservices in our architecture. RabbitMQ creates a communication queue between two processes (services) allowing them to send and receive messages asynchronously. In our case, the exchanged messages are usually tasks assigned from one microservice to another. By visiting the <a href="http://localhost:15672/">local RabbitMQ Management Inteface</a> we can see more details and analytics about the communication of our microservices.
+
 3. Legacy
     
     Legacy is one microservice that is only executed once on start-up. Since we use some legacy data that require specific handling (preprocessing, file combination etc) we created this microservice that loads said legacy data to our database.
