@@ -11,6 +11,7 @@ TRANSFORM_QUEUE = os.getenv('TRANSFORM_QUEUE', 'transform_queue')
 LOADING_QUEUE = os.getenv('LOADING_QUEUE', 'loading_queue')
 FAOSTAT_INDICATOR = "QCL"
 CBS_INDICATOR = "CBS"
+WEATHER_INDICATOR = "Weather"
 
 
 def transform_faostat(filename):
@@ -37,9 +38,35 @@ def transform_faostat(filename):
 
     return filename
 
+
 def transform_cbs(filename):
-    # TODO: Transform CBS data
     return filename
+
+
+def transform_weather_data(filename):
+    # TODO: Rename the fields according to the existing table
+    # Load the data
+    merged_data = pd.read_csv(filename)
+
+    merged_data['date'] = pd.to_datetime(merged_data['date'], errors='coerce')
+
+    # Drop the last column ('city')
+    merged_data_Y = merged_data.drop(columns=merged_data.columns[-1])
+
+    # Extract the year from the 'date' column and create a new 'Year' column
+    merged_data_Y['Year'] = merged_data_Y['date'].dt.year
+
+    # Drop the original 'date' column
+    merged_data_Y = merged_data_Y.drop(columns=['date'])
+
+    # Group by 'Year' and calculate the mean for all other columns
+    yearly_averages = merged_data_Y.groupby('Year').mean().reset_index()
+
+    filename = filename.replace("data_", "data_processed_")
+    yearly_averages.to_csv(filename, index=False)
+    
+    return filename
+    
 
 def notify_load_service(ch, method, properties, body):
     '''
@@ -66,6 +93,8 @@ def notify_load_service(ch, method, properties, body):
             active_file_name = transform_faostat(active_file_name)
         elif active_dataset == CBS_INDICATOR:
             active_file_name = transform_cbs(active_file_name)
+        elif active_dataset == WEATHER_INDICATOR:
+            active_file_name = transform_weather_data(active_file_name)
         # Data are transformed
         log_action(TRANSFORM_SERVICE_NAME,
                    f"Transformed {active_file_name} for {active_dataset}")

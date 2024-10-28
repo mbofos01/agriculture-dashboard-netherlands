@@ -30,6 +30,7 @@ from sqlalchemy import create_engine, text, inspect, Table
 import geopandas as gpd
 import folium
 from meteo_api import get_data
+import json
 
 ATTRIBUTES = ['AreaUnderCultivation_1', 'HarvestedArea_2',
               'GrossYieldPerHa_3', 'GrossYieldTotal_4']
@@ -71,6 +72,12 @@ style = {
 }
 
 FEATURE_NAMES = None
+CBS_FLAG = False
+FAO_FLAG = False
+WEATHER_FLAG = False
+FAOSTAT = None
+CBS = None
+yearly_average_merged_data = None
 
 with engine.connect() as connection:
     # QCL is in quotes because of case sensitivity
@@ -89,121 +96,128 @@ def load_and_prepare_data(ch, method, properties, body):
     global min_value, min_year, max_value, max_year, top_products
     global top_5_products, merged_df, correlations, top_5_correlations
     global cbs_arable_crops, cbs_years, cbs_municipal_boundaries, CBS
+    global WEATHER_FLAG, CBS_FLAG, FAO_FLAG
+    INCOMING_MESSAGE = None
 
     if body is not None:
         try:
             log_action(SERVER_SERVICE_NAME, f"Received {body.decode()}")
+            INCOMING_MESSAGE = json.loads(body.decode())
         except Exception as e:
             pass
+    if body is None:
+        WEATHER_FLAG = True
+        CBS_FLAG = True
+        FAO_FLAG = True
+        
+    try:
+        if INCOMING_MESSAGE['dataset'] == 'QCL':
+            FAO_FLAG = True
+        elif INCOMING_MESSAGE['dataset'] == 'CBS':
+            CBS_FLAG = True
+        elif INCOMING_MESSAGE['dataset'] == 'Weather':
+            WEATHER_FLAG = True
+    except:
+        pass
+    
+    # We wait to receive both a FAO and a Weather dataset update to proceed
+    if WEATHER_FLAG and FAO_FLAG:
+        WEATHER_FLAG = False
+        FAO_FLAG = False
+        with engine.connect() as connection:
+            # QCL is in quotes because of case sensitivity
+            result = connection.execute(text('SELECT * FROM "QCL"'))
+            data = result.fetchall()
+            columns = result.keys()
+            FAOSTAT = pd.DataFrame(data, columns=columns)
 
-    # LOAD CROP DATA
-    # FAOSTAT = pd.read_csv("/data/FAOSTAT_nozer.csv")
-    FAOSTAT = None
-    CBS = None
-    yearly_average_merged_data = None
+            log_action(SERVER_SERVICE_NAME,
+                    f"Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
 
-    with engine.connect() as connection:
-        # QCL is in quotes because of case sensitivity
-        result = connection.execute(text('SELECT * FROM "QCL"'))
-        data = result.fetchall()
-        columns = result.keys()
-        FAOSTAT = pd.DataFrame(data, columns=columns)
+        # LOAD WEATHER DATA
+        with engine.connect() as connection:
+            result = connection.execute(text('SELECT * FROM "Weather"'))
+            data = result.fetchall()
+            columns = result.keys()
+            yearly_average_merged_data = pd.DataFrame(data, columns=columns)
+            yearly_average_merged_data = yearly_average_merged_data.drop(
+                'index', axis=1)
 
-    with engine.connect() as connection:
-        # CBS is in quotes because of case sensitivity
-        result = connection.execute(text('SELECT * FROM "CBS"'))
-        data = result.fetchall()
-        columns = result.keys()
-        CBS = pd.DataFrame(data, columns=columns)
+            log_action(SERVER_SERVICE_NAME,
+                    f"Loaded {yearly_average_merged_data.shape[0]} rows from Weather")
+            
+            
+        # CREAT THE DATASET WITH THE TOTAL CROP PER YEAR
+        yearly_totals = FAOSTAT.groupby('Year')['Value'].sum().reset_index()
 
-    log_action(SERVER_SERVICE_NAME,
-               f"Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
-    log_action(SERVER_SERVICE_NAME,
-               f"Loaded {CBS.shape[0]} rows from CBS")
+        # Calculate and print the average growth rate
+        average_growth_rate = calculate_average_growth_rate(yearly_totals)
 
-    # LOAD WEATHER DATA
-    with engine.connect() as connection:
-        result = connection.execute(text('SELECT * FROM "Weather"'))
-        data = result.fetchall()
-        columns = result.keys()
-        yearly_average_merged_data = pd.DataFrame(data, columns=columns)
-        yearly_average_merged_data = yearly_average_merged_data.drop(
-            'index', axis=1)
+        # CALCULATE STATISTICS FOR TOTAL CROP YIELD THROUGH THE YEARS #################
+        # 1. Calculate Mean Value
+        mean_value = yearly_totals['Value'].mean()
 
-    log_action(SERVER_SERVICE_NAME,
-               f"Loaded {yearly_average_merged_data.shape[0]} rows from Weather")
+        # 2. Calculate Geometric Mean
+        geom_mean_value = average_growth_rate
 
-    # LOAD WEATHER DATA
-    # yearly_average_merged_data = pd.read_csv(
-    #     "/data/final_yearly_merged_data.csv")
+        # 3. Calculate Min Value and the Year it Occurs
+        min_value = yearly_totals['Value'].min()
+        min_year = yearly_totals['Year'][yearly_totals['Value'].idxmin()]
 
-    # with engine.connect() as connection:
-    #     result = connection.execute(text("SELECT * FROM Weather"))
-    #     data = result.fetchall()
-    #     columns = result.keys()
-    #     FAOSTAT = pd.DataFrame(data, columns=columns)
+        # 4. Calculate Max Value and the Year it Occurs
+        max_value = yearly_totals['Value'].max()
+        max_year = yearly_totals['Year'][yearly_totals['Value'].idxmax()]
 
-    # CREAT THE DATASET WITH THE TOTAL CROP PER YEAR
-    yearly_totals = FAOSTAT.groupby('Year')['Value'].sum().reset_index()
+        # CALCULATE CORRELATION BETWEEN WEATHER ATTRIBUTES AND CROP ####################
+        # Calculate total production by product
+        top_products = FAOSTAT.groupby('Item')['Value'].sum().reset_index()
 
-    # Calculate and print the average growth rate
-    average_growth_rate = calculate_average_growth_rate(yearly_totals)
+        # Sort the products by value in descending order and get the top 5
+        top_5_products = top_products.nlargest(
+            5, 'Value').sort_values(by='Value', ascending=False)
 
-    # CALCULATE STATISTICS FOR TOTAL CROP YIELD THROUGH THE YEARS #################
-    # 1. Calculate Mean Value
-    mean_value = yearly_totals['Value'].mean()
+        # Merge DataFrames on Year
+        merged_df = pd.merge(yearly_average_merged_data, yearly_totals, on='Year')
 
-    # 2. Calculate Geometric Mean
-    geom_mean_value = average_growth_rate
+        # Calculate Pearson correlations
+        correlations = {}
+        for column in merged_df.columns:
+            if column not in ['Year', 'Value']:
+                correlation_coefficient, _ = pearsonr(
+                    merged_df[column], merged_df['Value'])
+                correlations[column] = correlation_coefficient
 
-    # 3. Calculate Min Value and the Year it Occurs
-    min_value = yearly_totals['Value'].min()
-    min_year = yearly_totals['Year'][yearly_totals['Value'].idxmin()]
+        # Get the top 5 most correlated weather attributes
+        top_5_correlations = pd.Series(correlations).nlargest(5).reset_index()
+        top_5_correlations.columns = ['Attribute', 'Correlation']
 
-    # 4. Calculate Max Value and the Year it Occurs
-    max_value = yearly_totals['Value'].max()
-    max_year = yearly_totals['Year'][yearly_totals['Value'].idxmax()]
+        # Convert correlation to percentage
+        top_5_correlations['Correlation'] = (
+            top_5_correlations['Correlation'] * 100).round(2)
 
-    # CALCULATE CORRELATION BETWEEN WEATHER ATTRIBUTES AND CROP ####################
-    # Calculate total production by product
-    top_products = FAOSTAT.groupby('Item')['Value'].sum().reset_index()
+        current_date_or = date.today()
+        # Get current date - 1 day  i cases the data source isnt updated
+        current_date = date.today() - timedelta(days=1)
 
-    # Sort the products by value in descending order and get the top 5
-    top_5_products = top_products.nlargest(
-        5, 'Value').sort_values(by='Value', ascending=False)
+    if CBS_FLAG:
+        CBS_FLAG = False
+        with engine.connect() as connection:
+            # CBS is in quotes because of case sensitivity
+            result = connection.execute(text('SELECT * FROM "CBS"'))
+            data = result.fetchall()
+            columns = result.keys()
+            CBS = pd.DataFrame(data, columns=columns)
+            log_action(SERVER_SERVICE_NAME,
+                    f"Loaded {CBS.shape[0]} rows from CBS")
+            
+        # Prepate CBS data
+        # Get unique values for dropdowns
+        cbs_arable_crops = CBS['ArableCrops'].unique()
+        cbs_years = CBS['Periods'].unique()
 
-    # Merge DataFrames on Year
-    merged_df = pd.merge(yearly_average_merged_data, yearly_totals, on='Year')
-
-    # Calculate Pearson correlations
-    correlations = {}
-    for column in merged_df.columns:
-        if column not in ['Year', 'Value']:
-            correlation_coefficient, _ = pearsonr(
-                merged_df[column], merged_df['Value'])
-            correlations[column] = correlation_coefficient
-
-    # Get the top 5 most correlated weather attributes
-    top_5_correlations = pd.Series(correlations).nlargest(5).reset_index()
-    top_5_correlations.columns = ['Attribute', 'Correlation']
-
-    # Convert correlation to percentage
-    top_5_correlations['Correlation'] = (
-        top_5_correlations['Correlation'] * 100).round(2)
-
-    current_date_or = date.today()
-    # Get current date - 1 day  i cases the data source isnt updated
-    current_date = date.today() - timedelta(days=1)
-
-    # Prepate CBS data
-    # Get unique values for dropdowns
-    cbs_arable_crops = CBS['ArableCrops'].unique()
-    cbs_years = CBS['Periods'].unique()
-
-    # Load geodata
-    geodata_url = 'provincie_2024.geojson'
-    cbs_municipal_boundaries = gpd.read_file(geodata_url)
-
+        # Load geodata
+        geodata_url = 'provincie_2024.geojson'
+        cbs_municipal_boundaries = gpd.read_file(geodata_url)
 
 def calculate_average_growth_rate(yearly_totals):
     """

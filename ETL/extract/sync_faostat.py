@@ -108,6 +108,10 @@ elif DATA.shape[0] > LATEST_INDEX:
         {'file_name': f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', 'dataset': 'QCL'})
     wake_up_service(
         message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
+    # TODO: find last date of weather data
+    # TODO: find last date of the new FAOSTAT data
+    # TODO: fetch open-meteo data for these dates
+    # TODO: wake up transform service
 else:
     log_action(EXTRACT_SERVICE_NAME,
                "Something went wrong with FAOSTAT data extraction")

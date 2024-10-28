@@ -13,6 +13,7 @@ LOADING_QUEUE = os.getenv('LOADING_QUEUE', 'loading_queue')
 SERVER_QUEUE = os.getenv('SERVER_QUEUE', 'server_queue')
 FAOSTAT_INDICATOR = "QCL"
 CBS_INDICATOR = "CBS"
+WEATHER_INDICATOR = "Weather"
 
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
@@ -51,6 +52,10 @@ def load_data_to_database(ch, method, properties, body):
             data_frame.to_sql("QCL", engine, if_exists="replace", index=True)
         elif active_dataset == CBS_INDICATOR:
             data_frame.to_sql("CBS", engine, if_exists="replace", index=True)
+        elif active_dataset == WEATHER_INDICATOR:   
+            table_name = "Weather"
+            weather_ = pd.read_csv(active_file_name)
+            weather_.to_sql(table_name, con=engine, if_exists='append', index=False)
             
         log_action(LOAD_SERVICE_NAME, "Data loaded successfully!")
 
