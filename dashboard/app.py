@@ -53,8 +53,8 @@ SERVER_SERVICE_NAME = os.getenv('SERVER_SERVICE_NAME', 'server')
 INDICATOR = SERVER_SERVICE_NAME.upper()[0]
 SERVER_QUEUE = os.getenv('SERVER_QUEUE', 'server_queue')
 cbs_arable_crops, cbs_years, cbs_municipal_boundaries, CBS, MAP_DATA = None, None, None, None, None
-engine = create_engine(
-    "postgresql://student:infomdss@database:5432/dashboard")
+SQL_SERVER = os.getenv('DATABASE_URL')
+engine = create_engine(SQL_SERVER)
 
 external_stylesheets = [
     dbc.themes.BOOTSTRAP,
@@ -109,7 +109,7 @@ def load_and_prepare_data(ch, method, properties, body):
         WEATHER_FLAG = True
         CBS_FLAG = True
         FAO_FLAG = True
-        
+
     try:
         if INCOMING_MESSAGE['dataset'] == 'QCL':
             FAO_FLAG = True
@@ -119,7 +119,7 @@ def load_and_prepare_data(ch, method, properties, body):
             WEATHER_FLAG = True
     except:
         pass
-    
+
     # We wait to receive both a FAO and a Weather dataset update to proceed
     if WEATHER_FLAG and FAO_FLAG:
         WEATHER_FLAG = False
@@ -132,7 +132,7 @@ def load_and_prepare_data(ch, method, properties, body):
             FAOSTAT = pd.DataFrame(data, columns=columns)
 
             log_action(SERVER_SERVICE_NAME,
-                    f"Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
+                       f"Loaded {FAOSTAT.shape[0]} rows from FAOSTAT")
 
         # LOAD WEATHER DATA
         with engine.connect() as connection:
@@ -144,9 +144,8 @@ def load_and_prepare_data(ch, method, properties, body):
                 'index', axis=1)
 
             log_action(SERVER_SERVICE_NAME,
-                    f"Loaded {yearly_average_merged_data.shape[0]} rows from Weather")
-            
-            
+                       f"Loaded {yearly_average_merged_data.shape[0]} rows from Weather")
+
         # CREAT THE DATASET WITH THE TOTAL CROP PER YEAR
         yearly_totals = FAOSTAT.groupby('Year')['Value'].sum().reset_index()
 
@@ -177,7 +176,8 @@ def load_and_prepare_data(ch, method, properties, body):
             5, 'Value').sort_values(by='Value', ascending=False)
 
         # Merge DataFrames on Year
-        merged_df = pd.merge(yearly_average_merged_data, yearly_totals, on='Year')
+        merged_df = pd.merge(yearly_average_merged_data,
+                             yearly_totals, on='Year')
 
         # Calculate Pearson correlations
         correlations = {}
@@ -208,8 +208,8 @@ def load_and_prepare_data(ch, method, properties, body):
             columns = result.keys()
             CBS = pd.DataFrame(data, columns=columns)
             log_action(SERVER_SERVICE_NAME,
-                    f"Loaded {CBS.shape[0]} rows from CBS")
-            
+                       f"Loaded {CBS.shape[0]} rows from CBS")
+
         # Prepate CBS data
         # Get unique values for dropdowns
         cbs_arable_crops = CBS['ArableCrops'].unique()
@@ -218,6 +218,7 @@ def load_and_prepare_data(ch, method, properties, body):
         # Load geodata
         geodata_url = 'provincie_2024.geojson'
         cbs_municipal_boundaries = gpd.read_file(geodata_url)
+
 
 def calculate_average_growth_rate(yearly_totals):
     """
@@ -1139,9 +1140,10 @@ if __name__ == '__main__':
     consumer_thread.start()
 
     _debug_ = os.getenv('DEBUG', 0)
-    if _debug_ == 0 or _debug_ == '0':
-        _debug_ = False
-    else:
+
+    if _debug_ == 1 or _debug_ == '1':
         _debug_ = True
-        
+    else:
+        _debug_ = False
+
     app.run_server(debug=_debug_, host='0.0.0.0', port=8050, use_reloader=True)
