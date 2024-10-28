@@ -40,10 +40,28 @@ def transform_faostat(filename):
 
 
 def transform_cbs(filename):
+    '''
+    CBS data do not need any transformation.
+
+    Parameters:
+    - filename: The filename of the dataset
+
+    Returns:
+    - filename: The filename of the transformed dataset
+    '''
     return filename
 
 
 def transform_weather_data(filename):
+    '''
+    This function transforms the weather data.
+
+    Parameters:
+    - filename: The filename of the dataset
+
+    Returns:
+    - filename: The filename of the transformed dataset
+    '''
     # TODO: Rename the fields according to the existing table
     # Load the data
     merged_data = pd.read_csv(filename)
@@ -64,9 +82,9 @@ def transform_weather_data(filename):
 
     filename = filename.replace("data_", "data_processed_")
     yearly_averages.to_csv(filename, index=False)
-    
+
     return filename
-    
+
 
 def notify_load_service(ch, method, properties, body):
     '''
@@ -107,5 +125,6 @@ def notify_load_service(ch, method, properties, body):
         log_action(TRANSFORM_SERVICE_NAME, f"Something went wrong! {e}")
 
 
+# Wait for the extract service - Start the process
 wait_for_service(service_name=TRANSFORM_SERVICE_NAME,
                  queue_name=TRANSFORM_QUEUE, callback=notify_load_service)

@@ -1,5 +1,9 @@
 #!/bin/bash
-
+# This script waits for PostgreSQL to be available before starting the server
+# it checks if the necessary tables (CBS, QCL, Weather) exist in the database
+# if they do not exist, it waits until they are created
+# it then starts the server
+# Author: Michail Panagiotis Bofos
 
 # Function to check if PostgreSQL is reachable
 check_postgres() {

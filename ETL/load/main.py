@@ -41,22 +41,25 @@ def load_data_to_database(ch, method, properties, body):
         log_action(LOAD_SERVICE_NAME, f"Loading data...")
         with engine.connect() as conn:
             if active_dataset == FAOSTAT_INDICATOR:
-                result = conn.execute(text("DROP TABLE IF EXISTS QCL CASCADE;"))
+                result = conn.execute(
+                    text("DROP TABLE IF EXISTS QCL CASCADE;"))
             elif active_dataset == CBS_INDICATOR:
-                result = conn.execute(text("DROP TABLE IF EXISTS CBS CASCADE;"))
+                result = conn.execute(
+                    text("DROP TABLE IF EXISTS CBS CASCADE;"))
 
         log_action(LOAD_SERVICE_NAME, "Connecting with PostgreSQL...")
         data_frame = pd.read_csv(active_file_name, delimiter=",")
-    
+
         if active_dataset == FAOSTAT_INDICATOR:
             data_frame.to_sql("QCL", engine, if_exists="replace", index=True)
         elif active_dataset == CBS_INDICATOR:
             data_frame.to_sql("CBS", engine, if_exists="replace", index=True)
-        elif active_dataset == WEATHER_INDICATOR:   
+        elif active_dataset == WEATHER_INDICATOR:
             table_name = "Weather"
             weather_ = pd.read_csv(active_file_name)
-            weather_.to_sql(table_name, con=engine, if_exists='append', index=False)
-            
+            weather_.to_sql(table_name, con=engine,
+                            if_exists='append', index=False)
+
         log_action(LOAD_SERVICE_NAME, "Data loaded successfully!")
 
         payload = json.dumps(
@@ -69,5 +72,6 @@ def load_data_to_database(ch, method, properties, body):
         log_action(LOAD_SERVICE_NAME, f"Something went wrong: {e}")
 
 
+# Wait for the transform service - Start the process
 wait_for_service(service_name=LOAD_SERVICE_NAME,
                  queue_name=LOADING_QUEUE, callback=load_data_to_database)
