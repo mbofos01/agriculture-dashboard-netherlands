@@ -989,8 +989,37 @@ def update_map(selected_crop, selected_year, selected_attribute):
                         left_on="statnaam", right_on="name")
     MAP_DATA = MAP_DATA.to_crs(epsg=4326)
 
-    # if MAP_DATA.empty or MAP_DATA[ATTRIBUTES[selected_attribute]].isnull().all():
-    #     return html.Div("No data available for the selected crop and year.", style={'textAlign': 'center', 'padding': '20px'})
+    if MAP_DATA.empty or MAP_DATA[ATTRIBUTES[selected_attribute]].isnull().all():
+        # Create a blank map with a centered message
+        fig = go.Figure()
+        fig.add_trace(go.Choroplethmapbox(
+        geojson=MAP_DATA.geometry.__geo_interface__,  # Use the GeoJSON geometry
+        # Update the colorbar title
+        marker_opacity=0.7,
+        marker_line_width=0,
+        hoverinfo='text',  # Specify that you want to display text on hover
+        ))
+        fig.update_layout(
+            annotations=[
+                    dict(
+                        text="No data available for the selected crop and year",
+                        x=0.5,  # Center horizontally
+                        y=0.5,  # Center vertically
+                        xref="paper",
+                        yref="paper",
+                        showarrow=False,
+                        font=dict(size=25, color="black"),  # Text color
+                        align="center",
+                        bgcolor="orange",  # Background color for text
+                        opacity=0.7, 
+                    )
+                ],
+            mapbox_style="open-street-map",
+            mapbox_zoom=5.5,
+            mapbox_center={"lat": 52.2130, "lon": 5.2794},
+            height=600
+        )
+        return fig
 
     fig = go.Figure()
 
