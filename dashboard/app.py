@@ -1016,6 +1016,7 @@ def update_map(selected_crop, selected_year, selected_attribute):
                 ],
             mapbox_style="open-street-map",
             mapbox_zoom=5.5,
+            title_text=f"{ATTRIBUTE_LABEL[selected_attribute]} by Region",
             mapbox_center={"lat": 52.2130, "lon": 5.2794},
             height=600
         )
