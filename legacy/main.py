@@ -345,7 +345,7 @@ final_merged = yearly_data.merge(merged_data_norm, on='Year', how='inner')
 # Update to comply with OpenMeteo Data
 COLUMNS_TO_BE_DROPPED = ['dtr_MAM', 'dtr_JJA', 'dtr_SON', 'dtr_DJF']
 
-print(f"Dropping columns to {COLUMNS_TO_BE_DROPPED} comply with OpenMeteo Data")
+print(f"Dropping columns {COLUMNS_TO_BE_DROPPED} to comply with OpenMeteo Data")
 
 final_merged = final_merged.drop(columns=COLUMNS_TO_BE_DROPPED)
 
