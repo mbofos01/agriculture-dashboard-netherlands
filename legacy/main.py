@@ -341,6 +341,14 @@ merged_data_norm = merged_data_norm.drop(columns="daylight_duration")
 # print(yearly_data.columns)
 # print(yearly_data.head())
 final_merged = yearly_data.merge(merged_data_norm, on='Year', how='inner')
+
+# Update to comply with OpenMeteo Data
+COLUMNS_TO_BE_DROPPED = ['dtr_MAM', 'dtr_JJA', 'dtr_SON', 'dtr_DJF']
+
+print(f"Dropping columns to {COLUMNS_TO_BE_DROPPED} comply with OpenMeteo Data")
+
+final_merged = final_merged.drop(columns=COLUMNS_TO_BE_DROPPED)
+
 # print(final_merged.to_string())
 final_merged.to_csv(GOAL_FILE, index=False)
 
