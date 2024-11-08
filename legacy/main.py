@@ -13,6 +13,7 @@ if os.path.exists('/data/weather') == False:
     os.makedirs('/data/weather')
 
 GOAL_FILE = '/data/final_yearly_merged_data.csv'
+GOAL_FILE_MONTHLY = '/data/final_monthly_merged_data.csv'
 
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
@@ -48,14 +49,46 @@ def load_data_to_database(active_file_name):
         print(f"Something went wrong: {e}")
 
 
+def load_monthly_data_to_database(active_file_name):
+    '''
+    This function loads monthly data to the database.
+
+    Parameters:
+    - ch: The channel
+    - method: The method
+    - properties: The properties
+    - body: The body
+
+    Returns:
+    - None
+    '''
+    try:
+        print(f"Loading data...")
+        with engine.connect() as conn:
+            result = conn.execute(
+                text('DROP TABLE IF EXISTS "MonthlyWeather" CASCADE;'))
+
+        print("Connecting with PostgreSQL...")
+        data_frame = pd.read_csv(active_file_name, delimiter=",")
+
+        data_frame.to_sql("MonthlyWeather", engine,
+                          if_exists="replace", index=True)
+
+        print("Data loaded successfully!")
+
+    except Exception as e:
+        print(f"Something went wrong: {e}")
+
+
 # check if table "Weather" exists in the database
 inspector = inspect(engine)
-if "Weather" in inspector.get_table_names():
-    print("Table 'Weather' already exists in the database.")
+if "Weather" in inspector.get_table_names() and "MonthlyWeather" in inspector.get_table_names():
+    print("Table 'Weather' & 'MonthlyWeather' already exists in the database.")
     exit(1)
 
-if os.path.exists(GOAL_FILE):
+if os.path.exists(GOAL_FILE) and os.path.exists(GOAL_FILE_MONTHLY):
     load_data_to_database(GOAL_FILE)
+    load_monthly_data_to_database(GOAL_FILE_MONTHLY)
     exit(1)
 
 
@@ -121,6 +154,9 @@ if os.path.exists('/data/weather/yearly_average_merged_data.csv') == False:
 
     merged_df = merged_df.drop(columns="Diurnal Temperature Range")
     merged_df.to_csv(FILENAME, index=False)
+    
+    merged_df.to_csv(GOAL_FILE_MONTHLY, index=False)
+    load_monthly_data_to_database(GOAL_FILE_MONTHLY)
     # print(merged_df.columns)
     # -------------------------------------------------------------------------------------
     # FILTER FROM 1961 AND LATES AND CALCULATE THE AVERAGE
@@ -345,7 +381,8 @@ final_merged = yearly_data.merge(merged_data_norm, on='Year', how='inner')
 # Update to comply with OpenMeteo Data
 COLUMNS_TO_BE_DROPPED = ['dtr_MAM', 'dtr_JJA', 'dtr_SON', 'dtr_DJF']
 
-print(f"Dropping columns {COLUMNS_TO_BE_DROPPED} to comply with OpenMeteo Data")
+print(
+    f"Dropping columns {COLUMNS_TO_BE_DROPPED} to comply with OpenMeteo Data")
 
 final_merged = final_merged.drop(columns=COLUMNS_TO_BE_DROPPED)
 
