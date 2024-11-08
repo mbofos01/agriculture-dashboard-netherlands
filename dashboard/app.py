@@ -31,6 +31,8 @@ import geopandas as gpd
 import folium
 from meteo_api import get_data
 import json
+from tensorflow.keras.models import load_model
+import joblib
 
 ATTRIBUTES = ['AreaUnderCultivation_1', 'HarvestedArea_2',
               'GrossYieldPerHa_3', 'GrossYieldTotal_4']
@@ -78,6 +80,69 @@ WEATHER_FLAG = False
 FAOSTAT = None
 CBS = None
 yearly_average_merged_data = None
+
+# Read models TODO: use in functions
+
+model = load_model('/app/models/model.keras')
+MONTHLY_WEATHER = None
+with engine.connect() as connection:
+    # QCL is in quotes because of case sensitivity
+    result = connection.execute(text('SELECT * FROM "MonthlyWeather"'))
+    _data_ = result.fetchall()
+    columns = result.keys()
+    MONTHLY_WEATHER = pd.DataFrame(_data_, columns=columns)
+
+    log_action(SERVER_SERVICE_NAME,
+               f"Loaded {MONTHLY_WEATHER.shape[0]} rows from MonthlyWeather")
+
+MONTHLY_WEATHER.drop(columns=['index'], inplace=True)
+MONTHLY_WEATHER_FEATURES = MONTHLY_WEATHER.drop(columns=['Month-Year'])
+MONTHLY_WEATHER_TEST_DATA = MONTHLY_WEATHER.tail(12)
+MONTHLY_WEATHER_TEST_FEATURES = MONTHLY_WEATHER_TEST_DATA.drop(columns=['Month-Year'])
+
+# Scale the data based on the saved scaler
+MONTHLY_WEATHER_SCALER = joblib.load('/app/models/scaler.pkl')
+MONTHLY_WEATHER_SCALED_TEST_FEATURES = MONTHLY_WEATHER_SCALER.transform(MONTHLY_WEATHER_TEST_FEATURES)
+
+X_test = []
+X_test.append(MONTHLY_WEATHER_SCALED_TEST_FEATURES)
+X_test = np.array(X_test)
+last_sequence = X_test[0]
+year_predictions = []
+
+# Predict the next 12 months
+for _ in range(12):
+
+    # Predict the next month
+    next_pred = model.predict(np.array([last_sequence]))
+
+    # Inverse transform the prediction to get actual values
+    next_pred_actual = MONTHLY_WEATHER_SCALER.inverse_transform(next_pred)
+    year_predictions.append(next_pred_actual[0])
+
+    # Update the sequence by removing the first month and adding the prediction at the end
+    next_sequence = np.append(last_sequence[1:], next_pred, axis=0)
+    last_sequence = next_sequence
+
+
+
+# Convert all predictions to a DataFrame
+predictions_df = pd.DataFrame(year_predictions, columns=MONTHLY_WEATHER_FEATURES.columns)
+print(predictions_df)
+
+# Variable for Milo
+YEARLY_WEATHER_SUMMARY = predictions_df.agg({
+    'Frost days': 'sum',
+    'Wet days': 'sum',
+    'Precipitation rate': 'mean',
+    'Minimum 2m temperature': 'mean',
+    'Mean 2m temperature': 'mean',
+    'Maximum 2m temperature': 'mean',
+    'potential evapo-transpiration': 'mean',
+    'Cloud cover': 'mean',
+    'Vapour pressure': 'mean'
+}).reset_index()
+
 
 with engine.connect() as connection:
     # QCL is in quotes because of case sensitivity
@@ -993,27 +1058,27 @@ def update_map(selected_crop, selected_year, selected_attribute):
         # Create a blank map with a centered message
         fig = go.Figure()
         fig.add_trace(go.Choroplethmapbox(
-        geojson=MAP_DATA.geometry.__geo_interface__,  # Use the GeoJSON geometry
-        # Update the colorbar title
-        marker_opacity=0.7,
-        marker_line_width=0,
-        hoverinfo='text',  # Specify that you want to display text on hover
+            geojson=MAP_DATA.geometry.__geo_interface__,  # Use the GeoJSON geometry
+            # Update the colorbar title
+            marker_opacity=0.7,
+            marker_line_width=0,
+            hoverinfo='text',  # Specify that you want to display text on hover
         ))
         fig.update_layout(
             annotations=[
-                    dict(
-                        text="No data available for the selected crop and year",
-                        x=0.5,  # Center horizontally
-                        y=0.5,  # Center vertically
-                        xref="paper",
-                        yref="paper",
-                        showarrow=False,
-                        font=dict(size=25, color="black"),  # Text color
-                        align="center",
-                        bgcolor="orange",  # Background color for text
-                        opacity=0.7, 
-                    )
-                ],
+                dict(
+                    text="No data available for the selected crop and year",
+                    x=0.5,  # Center horizontally
+                    y=0.5,  # Center vertically
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=25, color="black"),  # Text color
+                    align="center",
+                    bgcolor="orange",  # Background color for text
+                    opacity=0.7,
+                )
+            ],
             mapbox_style="open-street-map",
             mapbox_zoom=5.5,
             title_text=f"{ATTRIBUTE_LABEL[selected_attribute]} by Region",
