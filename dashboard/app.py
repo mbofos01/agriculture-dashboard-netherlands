@@ -1,3 +1,4 @@
+import plotly.express as px
 import pika
 from datetime import date, datetime, timedelta
 from dash import Input, Output, State, callback_context
@@ -6,11 +7,12 @@ import datetime
 from IPython.display import display, HTML
 from dash.dash_table import DataTable
 import dash_bootstrap_components as dbc
-from dash import dcc, html
+from dash import dcc, html, dash_table
+
 from scipy.stats import pearsonr
 from scipy.stats import gmean
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler , StandardScaler
 import plotly.graph_objects as go  # Import for creating the second graph
 import time
 from dash.dependencies import Input, Output
@@ -129,6 +131,7 @@ for _ in range(12):
 # Convert all predictions to a DataFrame
 predictions_df = pd.DataFrame(year_predictions, columns=MONTHLY_WEATHER_FEATURES.columns)
 print(predictions_df)
+#predictions_df = predictions_df.reset_index(drop=True)
 
 # Variable for Milo
 YEARLY_WEATHER_SUMMARY = predictions_df.agg({
@@ -142,6 +145,107 @@ YEARLY_WEATHER_SUMMARY = predictions_df.agg({
     'Cloud cover': 'mean',
     'Vapour pressure': 'mean'
 }).reset_index()
+print(YEARLY_WEATHER_SUMMARY)
+
+#------------------------------Milo code
+
+# Define the correct feature order
+features_order = ['Cloud cover', 'potential evapo-transpiration', 'Precipitation rate', 'Minimum 2m temperature',
+                  'Mean 2m temperature', 'Maximum 2m temperature', 'Vapour pressure', 'Frost days', 'Wet days']
+YEARLY_WEATHER_SUMMARY.columns.values[1] = 'value'
+
+# Map csv to correct order
+feature_dict = YEARLY_WEATHER_SUMMARY.set_index('index')['value'].to_dict()
+ordered_values = [feature_dict[feature] for feature in features_order]
+df_single_row = pd.DataFrame([ordered_values])
+
+# Load the trained  model
+loaded_ensemble_data = joblib.load('/app/models/ensemble_models.joblib')
+
+# # Extract the models and feature subsetss for each model (it is an ensemble of 100 regressors)
+model_loaded = loaded_ensemble_data['model']
+scaler = loaded_ensemble_data['scaler'] 
+
+df_single_row = scaler.transform(df_single_row)
+
+
+
+#these are all the crops we trained on:
+crops = [
+    'Poppy seed', 'Cherries', 'Grapes', 
+    'Anise, badian, coriander, cumin, caraway, fennel and juniper berries, raw', 
+    'Maize (corn)', 'Raspberries', 
+    'Other berries and fruits of the genus vaccinium n.e.c.', 'Linseed', 
+    'Currants', 'Rape or colza seed', 'Plums and sloes', 'Beans, dry', 
+    'Peas, dry', 'Broad beans and horse beans, green', 'Sour cherries', 'Rye', 
+    'Asparagus', 'Flax, raw or retted', 'Oats', 'Other vegetables, fresh n.e.c.', 
+    'Peas, green', 'Carrots and turnips', 'Cabbages', 'Barley', 
+    'Onions and shallots, dry (excluding dehydrated)', 'Apples', 'Wheat', 
+    'Sugar beet', 'Potatoes'
+]
+
+# # Create the dictionary that maps crop names to their corresponding indices 
+crop_index_dict = {crop: index for index, crop in enumerate(crops)}
+
+# Display the dictionary
+
+
+def Predict_one(weather, crop):
+
+    one_hot_encoding_potatoes = np.zeros(29) 
+    one_hot_encoding_potatoes[crop] = 1  # 'Potatoes' is at index 28, so set it to 1
+
+    
+    input_data = np.concatenate([one_hot_encoding_potatoes, weather]) #concatenate one-hot encoding of crops
+    input_data = input_data.reshape(1, -1)
+    
+    # Predict using each model in the ensemble
+    y_pred = model_loaded.predict(input_data)
+    y_pred = np.maximum(y_pred, 0)  # Ensure non-negative predictions
+    
+    # Output the result
+  
+    
+    print(f"Predicted yield for {crops[crop]} in {2024}: {y_pred}")
+    return crops[crop], y_pred
+
+
+def Predict_all(weather):
+    crop_arr = []
+    val_arr = []
+    for crop_index in range(len(crops)):
+        crop, val =Predict_one(weather, crop_index) 
+        crop_arr.append(crop)
+        val_arr.append(val)
+    return crop_arr, val_arr
+
+
+crop_arr, val_arr = Predict_all(np.array(df_single_row)[0])
+df = pd.DataFrame({'Crop': crop_arr, 'Values': val_arr})
+print(df)
+df['Values'] = df['Values'].apply(lambda x: x[0] if isinstance(x, np.ndarray)else x)
+FAOSTAT2=df
+total_value = FAOSTAT2['Values'].sum()
+#FAOSTAT2.to_csv("/app/models/dummyfaopred.csv")
+
+
+
+
+
+#------------------------------Milo code
+
+#model = load_model('/app/models/modensemble_models.joblib')
+
+
+#DUMMY--------------------------------sp
+FAOSTAT1 = pd.DataFrame({
+    'Year': [2022, 2022, 2022],
+    'Product': ['Wheat', 'Rice', 'Corn'],
+    'Proportion': [40, 30, 30]
+})
+FAOSTAT1 = FAOSTAT1[FAOSTAT1['Year'] == 2022]
+#DUMMY--------------------------------sp
+
 
 
 with engine.connect() as connection:
@@ -409,6 +513,7 @@ app.layout = dbc.Container(
         #         style=style  # Apply the style
         #     )
         # ], style={'padding': 10}),
+        
 
         # CARD PLOT GNERAL STATISTICS FOR TOTAL CROP YIELD THROUGH YEARS ############
         dbc.Container([
@@ -715,6 +820,120 @@ app.layout = dbc.Container(
         html.Button('Back to Line Chart', id='back-button',
                     style={'display': 'none'}),  # Back button hidden initially
 
+        html.H1(children=f"Monthly weather feature predictions for {FAOSTAT['Year'].max() + 1}"),
+        # Dropdown for feature selection
+        dcc.Dropdown(
+            id='feature-dropdown',
+            options=[{'label': FEATURE_NAMES[col], 'value': col} for col in predictions_df.columns[1:]],  # columns after the first one
+            value=predictions_df.columns[1],  # default value
+            clearable=False
+        ),
+        
+        # Line chart for the selected feature 
+        dcc.Graph(id='line-chart'),
+        html.H1(children=f"Yearly predicted weather features for {FAOSTAT['Year'].max() + 1}"),
+
+        #--------------------- ds2024
+        html.Div(style={
+            'display': 'flex',
+            'flexDirection': 'column',
+            'alignItems': 'center',
+            'justifyContent': 'center',
+            'padding': '30px',
+            'width': '80%',
+            'maxWidth': '1000px',  # Limits the maximum width for better readability
+            'backgroundColor': '#f9f9f9',  # Light background to contrast with the white container
+            'borderRadius': '12px',  # Slightly rounded corners for a modern look
+            'boxShadow': '0 10px 20px rgba(0, 0, 0, 0.1)',  # Softer, deeper shadow
+            'margin': 'auto',
+            'marginTop': '50px',  # Space from the top of the page
+            'border': 'none',
+                     }, children=[
+            html.H1("Weather Summary", style={
+                'textAlign': 'center',  # Centered title
+                'color': '#3e3e3e',  # Darker color for better readability
+                'fontFamily': 'Arial, sans-serif',
+                'fontSize': '28px',
+                'fontWeight': '600',
+                'marginBottom': '20px'  # Add space below the title
+            }),
+            dash_table.DataTable(
+                id='weather-summary-table',
+                columns=[{'name': str(col), 'id': str(col)} for col in YEARLY_WEATHER_SUMMARY.columns],
+                data=YEARLY_WEATHER_SUMMARY.reset_index(drop=True).to_dict('records'),  # Drop the index
+                style_table={
+                    'width': '100%',
+                    'borderRadius': '8px',  # Rounded corners for the table
+                    'backgroundColor': '#ffffff',
+                    'boxShadow': '0 2px 8px rgba(0, 0, 0, 0.05)',  # Subtle shadow for the table
+                    'overflowX': 'auto',  # Allow horizontal scroll if necessary
+                },
+                style_cell={
+                    'textAlign': 'center',  # Center-align the text in the table
+                    'padding': '10px',  # Add some padding for spacing
+                    'fontSize': '14px',  # Set a readable font size
+                    'fontFamily': 'Arial, sans-serif',
+                    'color': '#4a4a4a',  # Slightly lighter color for table text
+                },
+                style_header={
+                    'display': 'none'
+                    # 'backgroundColor': '#e3e3e3',  # Light gray header
+                    # 'fontWeight': 'bold',
+                    # 'textAlign': 'center',
+                    # 'fontSize': '16px',
+                    # 'color': '#333',
+                    # 'borderBottom': '2px solid #ccc'  # Light border at the bottom of the header
+                },
+                style_data={
+                    'borderBottom': '1px solid #ddd',  # Subtle borders between rows
+                }
+            )
+        ]),
+
+
+        #--------------------- ds2024
+        html.H1(
+            children=f"Predictions Crop Production for {FAOSTAT['Year'].max() + 1}",
+            style={'text-align': 'center'}  # Center the H1 title itself
+        ),
+        dcc.Graph(
+            id='faostat-pie-chart',
+            figure=px.pie(
+                FAOSTAT2, 
+                names='Crop', 
+                values='Values', 
+                title='Crop production in tons'
+            ).update_layout(
+                title_x=0.5,
+                annotations=[
+                    {
+                        'text': f"Total<br>{total_value}",  # Use line break for multi-line text
+                        'showarrow': False,
+                        'font': {'size': 20, 'color': 'black'},  # Adjust font size and color
+                        'align': 'center',
+                        'x': 0.5, 
+                        'y': 0.5,
+                        'xref': 'paper',
+                        'yref': 'paper',
+                        'bgcolor': 'white',  # Background color for the white square
+                        'bordercolor': 'black',
+                        'borderwidth': 2,
+                        'borderpad': 10  # Padding inside the white square
+                    }
+                ]
+            ),
+            style={'width': '1100px', 'height': '1100px'}  # Adjust the width and height as needed
+        ),
+
+        
+
+
+        
+
+        
+
+
+
         # TOP MOST PRODUCED CROPS IN NETHERLANDS AND TOP MOST CORRELATE WEATHER ATTRIBUTES ##################################
         html.Div(style={
             'padding': '20px',
@@ -833,7 +1052,7 @@ def update_yield_graph(selected_feature, selected_item):
 
     fig.update_layout(title=f"{FEATURE_NAMES[selected_feature]} and {selected_item} over Time",
                       xaxis_title="Year",
-                      yaxis_title=FEATURE_NAMES[selected_feature],
+                      yaxis_title=selected_feature,
                       yaxis2=dict(title=selected_item,
                                   overlaying='y', side='right'),
                       barmode='group')  # Set barmode to 'group'
@@ -878,7 +1097,7 @@ def update_scatter_plot(item_name, weather_column):
         x=x_scaled.flatten(),
         y=y_scaled.flatten(),
         labels={
-            'x': f"{item_name} Production ({value_column}) - Scaled", 'y': f"{FEATURE_NAMES[weather_column]} - Scaled"},
+            'x': f"{item_name} Production ({value_column}) - Scaled", 'y': f"{weather_column} - Scaled"},
         title=f"Scatter Plot: {item_name} Production vs. {FEATURE_NAMES[weather_column]}",
         # width=700,  # Set the width
         height=700
@@ -927,7 +1146,7 @@ def update_line_graph(_):
     # Create line graph with yearly totals
     fig = go.Figure(go.Scatter(
         x=yearly_totals['Year'], y=yearly_totals['Value'], mode='lines+markers'))
-    fig.update_layout(xaxis_title='Year', yaxis_title='Total Value')
+    fig.update_layout(xaxis_title='Year', yaxis_title='Total Value in tons')
     return fig
 
 # DRILL DOW PIE CHART FOR CROP DISTRIBUTION #####
@@ -982,8 +1201,30 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
 
     return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}, "Click on a point in the line graph to see the crop distribution for that year."
 
-# --------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------sp
+# List of month names for labeling
+months = ["January", "February", "March", "April", "May", "June", "July", "August", 
+          "September", "October", "November", "December"]
 
+@app.callback(
+    Output('line-chart', 'figure'),
+    Input('feature-dropdown', 'value')
+)
+def update_line_chart(selected_feature):
+    # Ensure the x-axis labels are months
+    x_labels = months * (len(predictions_df) // 12) + months[:len(predictions_df) % 12]
+
+    # Create the line chart
+    fig = px.line(
+        predictions_df,
+        x=x_labels,  # Use the mapped month names
+        y=selected_feature,
+        title=f'{selected_feature} over Months'
+    )
+    fig.update_traces( mode="lines+markers")  # Add purple line and points
+    fig.update_layout(xaxis_title="Month", yaxis_title=selected_feature)
+    return fig
+#---------------------------------------------------------------------------------
 
 @app.callback(
     Output('feature-graph', 'figure'),
