@@ -2,6 +2,7 @@ import os
 from communication.communicate import wake_up_service, wait_for_service, log_action
 import json
 import pandas as pd
+from weather_transformation import transform_daily_data, transform_hourly_data
 
 EXTRACT_SERVICE_NAME = os.getenv('EXTRACT_SERVICE_NAME', 'extract')
 LOAD_SERVICE_NAME = os.getenv('LOAD_SERVICE_NAME', 'load')
@@ -52,38 +53,28 @@ def transform_cbs(filename):
     return filename
 
 
-def transform_weather_data(filename):
+def transform_weather_data(filename_daily, filename_hourly):
     '''
-    This function transforms the weather data.
+    This function transforms the weather dataset.
 
     Parameters:
-    - filename: The filename of the dataset
+    - filename_daily: The filename of the daily dataset
+    - filename_hourly: The filename of the hourly dataset
 
     Returns:
-    - filename: The filename of the transformed dataset
+    - filename_annual: The filename of the annual dataset
+    - filename_monthly: The filename of the monthly dataset
     '''
-    # TODO: Rename the fields according to the existing table
-    # Load the data
-    merged_data = pd.read_csv(filename)
+    daily = pd.read_csv(filename_daily)
+    hourly = pd.read_csv(filename_hourly)
 
-    merged_data['date'] = pd.to_datetime(merged_data['date'], errors='coerce')
+    monthly = transform_daily_data(daily)
+    final_annual, final_monthly = transform_hourly_data(hourly, monthly)
 
-    # Drop the last column ('city')
-    merged_data_Y = merged_data.drop(columns=merged_data.columns[-1])
+    final_annual.to_csv("/data/ACTIVE_WEATHER_ANNUAL.csv", index=False)
+    final_monthly.to_csv("/data/ACTIVE_WEATHER_MONTHLY.csv", index=False)
 
-    # Extract the year from the 'date' column and create a new 'Year' column
-    merged_data_Y['Year'] = merged_data_Y['date'].dt.year
-
-    # Drop the original 'date' column
-    merged_data_Y = merged_data_Y.drop(columns=['date'])
-
-    # Group by 'Year' and calculate the mean for all other columns
-    yearly_averages = merged_data_Y.groupby('Year').mean().reset_index()
-
-    filename = filename.replace("data_", "data_processed_")
-    yearly_averages.to_csv(filename, index=False)
-
-    return filename
+    return "/data/ACTIVE_WEATHER_ANNUAL.csv", "/data/ACTIVE_WEATHER_MONTHLY.csv"
 
 
 def notify_load_service(ch, method, properties, body):
@@ -102,25 +93,41 @@ def notify_load_service(ch, method, properties, body):
 
     try:
         payload = json.loads(body)
-        active_file_name = payload["file_name"]
         active_dataset = payload["dataset"]
-        log_action(TRANSFORM_SERVICE_NAME,
-                   f"Received {active_file_name} for {active_dataset}")
-        # TODO: Act as transform service for weather data
+        if active_dataset == WEATHER_INDICATOR:
+            active_file_name_daily = payload["file_name_daily"]
+            active_file_name_hourly = payload["file_name_hourly"]
+            log_action(TRANSFORM_SERVICE_NAME,
+                       f"Received {active_file_name_daily} and {active_file_name_hourly} for {active_dataset}")
+        else:
+            active_file_name = payload["file_name"]
+            log_action(TRANSFORM_SERVICE_NAME,
+                       f"Received {active_file_name} for {active_dataset}")
         if active_dataset == FAOSTAT_INDICATOR:
             active_file_name = transform_faostat(active_file_name)
         elif active_dataset == CBS_INDICATOR:
             active_file_name = transform_cbs(active_file_name)
         elif active_dataset == WEATHER_INDICATOR:
-            active_file_name = transform_weather_data(active_file_name)
+            active_file_name, final_dataset_monthly = transform_weather_data(
+                active_file_name_daily, active_file_name_hourly)
         # Data are transformed
         log_action(TRANSFORM_SERVICE_NAME,
                    f"Transformed {active_file_name} for {active_dataset}")
 
-        payload = json.dumps(
-            {'file_name': active_file_name, 'dataset': active_dataset})
-        wake_up_service(message=payload, service_name_to=LOAD_SERVICE_NAME, service_name_from=TRANSFORM_SERVICE_NAME,
-                        queue_name=LOADING_QUEUE)
+        if active_dataset == WEATHER_INDICATOR:
+            payload = json.dumps(
+                {'file_name': active_file_name, 'dataset': f'{active_dataset}-ANNUAL'})
+            wake_up_service(message=payload, service_name_to=LOAD_SERVICE_NAME, service_name_from=TRANSFORM_SERVICE_NAME,
+                            queue_name=LOADING_QUEUE)
+
+            payload = json.dumps(
+                {'file_name': final_dataset_monthly, 'dataset': f'{active_dataset}-MONTHLY'})
+
+        else:
+            payload = json.dumps(
+                {'file_name': active_file_name, 'dataset': active_dataset})
+            wake_up_service(message=payload, service_name_to=LOAD_SERVICE_NAME, service_name_from=TRANSFORM_SERVICE_NAME,
+                            queue_name=LOADING_QUEUE)
     except Exception as e:
         log_action(TRANSFORM_SERVICE_NAME, f"Something went wrong! {e}")
 

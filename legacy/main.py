@@ -92,116 +92,112 @@ if os.path.exists(GOAL_FILE) and os.path.exists(GOAL_FILE_MONTHLY):
     exit(1)
 
 
-if os.path.exists('/data/weather/yearly_average_merged_data.csv') == False:
-    # folder_path = '/data/weather/weatherhis'
-    folder_path = '/data/weather/weatherhis'
+# folder_path = '/data/weather/weatherhis'
+folder_path = '/data/weather/weatherhis'
 
-    # List all files in the directory
-    files = os.listdir(folder_path)
-    file_dict = {
-        'cld.txt': 'Cloud cover',
-        'dtr.txt': 'Diurnal Temperature Range',
-        'frs.txt': 'Frost days',
-        'pet.txt': 'potential evapo-transpiration',
-        'pre.txt': 'Precipitation rate',
-        'tmn.txt': 'Minimum 2m temperature',
-        'tmp.txt': 'Mean 2m temperature',
-        'tmx.txt': 'Maximum 2m temperature',
-        'vap.txt': 'Vapour pressure',
-        'wet.txt': 'Wet days',
-    }
-    data_frames = []
-    for file in files:
+# List all files in the directory
+files = os.listdir(folder_path)
+file_dict = {
+    'cld.txt': 'Cloud cover',
+    'dtr.txt': 'Diurnal Temperature Range',
+    'frs.txt': 'Frost days',
+    'pet.txt': 'potential evapo-transpiration',
+    'pre.txt': 'Precipitation rate',
+    'tmn.txt': 'Minimum 2m temperature',
+    'tmp.txt': 'Mean 2m temperature',
+    'tmx.txt': 'Maximum 2m temperature',
+    'vap.txt': 'Vapour pressure',
+    'wet.txt': 'Wet days',
+}
+data_frames = []
+for file in files:
 
-        # FutureWarning: The 'delim_whitespace' keyword in pd.read_csv is deprecated and will be removed in a future version. Use ``sep='\s+'`` instead
-        df = pd.read_csv(folder_path+'/'+file, sep='\s+')
+    # FutureWarning: The 'delim_whitespace' keyword in pd.read_csv is deprecated and will be removed in a future version. Use ``sep='\s+'`` instead
+    df = pd.read_csv(folder_path+'/'+file, sep='\s+')
 
-        # Drop the last 5 columns
-        df = df.iloc[:, :-5]
+    # Drop the last 5 columns
+    df = df.iloc[:, :-5]
 
-        # Melt the DataFrame to reshape
-        melted_df = df.melt(
-            id_vars=['YEAR'], var_name='Month', value_name=file_dict[file])
+    # Melt the DataFrame to reshape
+    melted_df = df.melt(
+        id_vars=['YEAR'], var_name='Month', value_name=file_dict[file])
 
-        # Create the 'Month-Year' column
-        melted_df['Month-Year'] = melted_df['Month'] + \
-            '-' + melted_df['YEAR'].astype(str)
+    # Create the 'Month-Year' column
+    melted_df['Month-Year'] = melted_df['Month'] + \
+        '-' + melted_df['YEAR'].astype(str)
 
-        # Convert Months to a categorical attribute to be used for sorting later. If i had theme like 01,02,03 etc this step is not needed'
-        melted_df['Month'] = pd.Categorical(melted_df['Month'],
-                                            categories=['JAN', 'FEB', 'MAR', 'APR', 'MAY',
-                                                        'JUN', 'JUL', 'AUG', 'SEP', 'OCT',
-                                                        'NOV', 'DEC'],
-                                            ordered=True)
-        # Sort the DataFrame
-        final_df = melted_df.sort_values(by=['YEAR', 'Month'])
+    # Convert Months to a categorical attribute to be used for sorting later. If i had theme like 01,02,03 etc this step is not needed'
+    melted_df['Month'] = pd.Categorical(melted_df['Month'],
+                                        categories=['JAN', 'FEB', 'MAR', 'APR', 'MAY',
+                                                    'JUN', 'JUL', 'AUG', 'SEP', 'OCT',
+                                                    'NOV', 'DEC'],
+                                        ordered=True)
+    # Sort the DataFrame
+    final_df = melted_df.sort_values(by=['YEAR', 'Month'])
 
-        # Select relevant columns
-        final_df_clc = final_df[['Month-Year', file_dict[file]]]
+    # Select relevant columns
+    final_df_clc = final_df[['Month-Year', file_dict[file]]]
 
-        # Reset the index if needed
-        final_df_clc.reset_index(drop=True, inplace=True)
-        data_frames.append(final_df_clc)
+    # Reset the index if needed
+    final_df_clc.reset_index(drop=True, inplace=True)
+    data_frames.append(final_df_clc)
 
-    # -------------------------------------------------------------------------------------
-    merged_df = data_frames[0]
-    for df in data_frames[1:]:
-        # 'outer' to keep all dates, adjust to 'inner' if you only want common dates
-        merged_df = pd.merge(merged_df, df, on='Month-Year', how='inner')
+# -------------------------------------------------------------------------------------
+merged_df = data_frames[0]
+for df in data_frames[1:]:
+    # 'outer' to keep all dates, adjust to 'inner' if you only want common dates
+    merged_df = pd.merge(merged_df, df, on='Month-Year', how='inner')
 
-    # FILENAME = '/data/weather/merged_data.csv'
-    FILENAME = '/data/weather/merged_data.csv'
+# FILENAME = '/data/weather/merged_data.csv'
+FILENAME = '/data/weather/merged_data.csv'
 
-    merged_df = merged_df.drop(columns="Diurnal Temperature Range")
-    merged_df.to_csv(FILENAME, index=False)
-    
-    merged_df.to_csv(GOAL_FILE_MONTHLY, index=False)
-    load_monthly_data_to_database(GOAL_FILE_MONTHLY)
-    # print(merged_df.columns)
-    # -------------------------------------------------------------------------------------
-    # FILTER FROM 1961 AND LATES AND CALCULATE THE AVERAGE
-    # Extract the year from the 'Month-Year' column
-    merged_df['Year'] = merged_df['Month-Year'].str.extract(
-        r'(\d{4})').astype(int)
+merged_df = merged_df.drop(columns="Diurnal Temperature Range")
+merged_df.to_csv(FILENAME, index=False)
 
-    # Filter the data to keep only records from 1961 and onwards
-    df_filtered = merged_df[(merged_df['Year'] >= 1961)
-                            & (merged_df['Year'] <= 2022)]
+merged_df.to_csv(GOAL_FILE_MONTHLY, index=False)
+load_monthly_data_to_database(GOAL_FILE_MONTHLY)
+# print(merged_df.columns)
+# -------------------------------------------------------------------------------------
+# FILTER FROM 1961 AND LATES AND CALCULATE THE AVERAGE
+# Extract the year from the 'Month-Year' column
+merged_df['Year'] = merged_df['Month-Year'].str.extract(
+    r'(\d{4})').astype(int)
 
-    # Drop the 'Month-Year' column as it's no longer needed
-    df_filtered = df_filtered.drop(columns=['Month-Year'])
+# Filter the data to keep only records from 1961 and onwards
+df_filtered = merged_df[(merged_df['Year'] >= 1961)
+                        & (merged_df['Year'] <= 2022)]
 
-    # agg_funcs = {col: 'mean' for col in df_filtered.columns if col not in [
-    #     df_filtered.columns[2], df_filtered.columns[9]]}  # Mean for all except 2 and 9
-    # agg_funcs[df_filtered.columns[2]] = 'sum'  # Sum for column 2
-    # agg_funcs[df_filtered.columns[9]] = 'sum'  # Sum for column 9
+# Drop the 'Month-Year' column as it's no longer needed
+df_filtered = df_filtered.drop(columns=['Month-Year'])
 
-    # 3rd potential evapo-transpiration -> 10th
-    # 10th Wet days -> 9th
-    # Define the aggregation functions for each column
-    SUM_INSTEAD_OF_MEAN = ["Frost days", "Wet days"]
+# agg_funcs = {col: 'mean' for col in df_filtered.columns if col not in [
+#     df_filtered.columns[2], df_filtered.columns[9]]}  # Mean for all except 2 and 9
+# agg_funcs[df_filtered.columns[2]] = 'sum'  # Sum for column 2
+# agg_funcs[df_filtered.columns[9]] = 'sum'  # Sum for column 9
 
-    # Mean for all except 2 and 9
-    agg_funcs = {
-        col: 'mean' for col in df_filtered.columns if col not in SUM_INSTEAD_OF_MEAN}
+# 3rd potential evapo-transpiration -> 10th
+# 10th Wet days -> 9th
+# Define the aggregation functions for each column
+SUM_INSTEAD_OF_MEAN = ["Frost days", "Wet days"]
 
-    for col in SUM_INSTEAD_OF_MEAN:
-        agg_funcs[col] = 'sum'
+# Mean for all except 2 and 9
+agg_funcs = {
+    col: 'mean' for col in df_filtered.columns if col not in SUM_INSTEAD_OF_MEAN}
 
-    # Group by 'Year' and apply the aggregation functions
-    df_yearly_avg = df_filtered.groupby('Year').agg(agg_funcs)
-    df_yearly_avg = df_yearly_avg.drop(columns=['Year'])
-    # df_yearly_avg = df_yearly_avg[['Year'] + [col for col in df_yearly_avg.columns if col != 'Year']]
-    # print(df_yearly_avg.head())
-    # print(df_filtered['Year'].unique())
-    # Display the first few rows of the final DataFrame
+for col in SUM_INSTEAD_OF_MEAN:
+    agg_funcs[col] = 'sum'
 
-    df_yearly_avg.to_csv(
-        '/data/weather/yearly_average_merged_data.csv', index=True)
+# Group by 'Year' and apply the aggregation functions
+df_yearly_avg = df_filtered.groupby('Year').agg(agg_funcs)
+df_yearly_avg = df_yearly_avg.drop(columns=['Year'])
+# df_yearly_avg = df_yearly_avg[['Year'] + [col for col in df_yearly_avg.columns if col != 'Year']]
+# print(df_yearly_avg.head())
+# print(df_filtered['Year'].unique())
+# Display the first few rows of the final DataFrame
 
-else:
-    df_yearly_avg = pd.read_csv(
-        '/data/weather/yearly_average_merged_data.csv')
+df_yearly_avg.to_csv(
+    '/data/weather/yearly_average_merged_data.csv', index=True)
+
 
 # Load the yearly_average_merged_data.csv
 yearly_data = pd.read_csv('/data/weather/yearly_average_merged_data.csv')

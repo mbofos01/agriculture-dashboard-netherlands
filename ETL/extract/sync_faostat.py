@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 import database_communication as db
 from communication.communicate import wake_up_service, log_action
 import json
+from weather_extraction import get_daily_data, get_hourly_data, transform_date
 
 # These variables are used to fetch data
 CODE = 'QCL'
@@ -108,10 +109,33 @@ elif DATA.shape[0] > LATEST_INDEX:
         {'file_name': f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', 'dataset': 'QCL'})
     wake_up_service(
         message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
-    # TODO: find last date of weather data
-    # TODO: find last date of the new FAOSTAT data
-    # TODO: fetch open-meteo data for these dates
-    # TODO: wake up transform service
+    # DONE: find last date of weather data
+    last_year_on_db = int(db.get_max_feature(engine, 'Weather', 'Year'))
+    log_action(EXTRACT_SERVICE_NAME, f"Last year on db: {last_year_on_db}")
+    # DONE: find last date of the new FAOSTAT data
+    last_year_on_data = int(DATA['Year'].max())
+    log_action(EXTRACT_SERVICE_NAME,
+               f"Last year on incoming data: {last_year_on_data}")
+    # DONE: fetch open-meteo data for these dates
+    if last_year_on_db < last_year_on_data:
+        start_date, end_date = transform_date(
+            last_year_on_db, last_year_on_data)
+        log_action(EXTRACT_SERVICE_NAME,
+                   f"New weather data available - fetching data for [{start_date} - {end_date}] from Open-Meteo")
+        daily = get_daily_data(start_date, end_date)
+        hourly = get_hourly_data(start_date, end_date)
+        # DONE: wake up transform service
+        daily.to_csv(f'{ROOT_DIR}/daily_weather_{TIMESTAMP}.csv', index=False)
+        hourly.to_csv(
+            f'{ROOT_DIR}/hourly_weather_{TIMESTAMP}.csv', index=False)
+        payload = json.dumps(
+            {'file_name_daily': f'{ROOT_DIR}/daily_weather_{TIMESTAMP}.csv',
+             'file_name_hourly': f'{ROOT_DIR}/hourly_weather_{TIMESTAMP}.csv',
+             'dataset': 'Weather'})
+        wake_up_service(message=payload,
+                        service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
+
+
 else:
     log_action(EXTRACT_SERVICE_NAME,
                "Something went wrong with FAOSTAT data extraction")
