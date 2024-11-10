@@ -84,8 +84,6 @@ DATA = pd.DataFrame(cbsodata.get_data(DATASET))
 DATA['Regions'] = DATA['Regions'].str.strip()
 
 fao_threshold = read_fao_threshold()
-log_action(EXTRACT_SERVICE_NAME,
-           f'FAOSTAT threshold is {fao_threshold} dropping data after this year')
 DATA = DATA[DATA['Periods'] <= fao_threshold]
 
 engine = create_engine(
@@ -114,6 +112,8 @@ elif DATA.shape[0] < LATEST_INDEX:
     log_action(EXTRACT_SERVICE_NAME, "CBS data is missing")
 elif DATA.shape[0] > LATEST_INDEX:
     log_action(EXTRACT_SERVICE_NAME, "New CBS data available")
+    log_action(EXTRACT_SERVICE_NAME,
+           f'FAOSTAT threshold is {fao_threshold} dropping CBS data after this year')
     TIMESTAMP = datetime.now().strftime('%Y-%m-%d_%H-%M')
     DATA.to_csv(f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', index=False)
     payload = json.dumps(
