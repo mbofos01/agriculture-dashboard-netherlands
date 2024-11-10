@@ -68,6 +68,20 @@ def get_latest_index(directory=ROOT_DIR, prefix=PREFIX):
         return 0
 
 
+def save_faostat_end_year(year):
+    '''
+    This function saves the end year of the FAOSTAT data in a file.
+    
+    Parameters:
+    - year: The end year of the FAOSTAT data
+    
+    Returns:
+    - None
+    '''
+    with open('/data/faostat_end_year.txt', 'w') as f:
+        f.write(str(year))
+    
+
 # Define the details you want to fetch
 AREA_TUPLES = faostat.get_par(CODE, 'area')
 ELEMENT_TUPLES = faostat.get_par(CODE, 'element')
@@ -85,6 +99,8 @@ if db.table_exists(engine, 'QCL') == False and get_latest_dataset() is not None:
                "Table does not exist, but data is available locally")
     payload = json.dumps(
         {'file_name': "/data/" + get_latest_dataset(), 'dataset': 'QCL'})
+
+    save_faostat_end_year(DATA['Year'].max())
     wake_up_service(
         message=payload, service_name_from=EXTRACT_SERVICE_NAME, service_name_to=TRANSFORM_SERVICE_NAME, queue_name=TRANSFORM_QUEUE)
     exit(1)
@@ -105,6 +121,7 @@ elif DATA.shape[0] > LATEST_INDEX:
     log_action(EXTRACT_SERVICE_NAME, "New FAOSTAT data available")
     TIMESTAMP = datetime.now().strftime('%Y-%m-%d_%H-%M')
     DATA.to_csv(f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', index=False)
+    save_faostat_end_year(DATA['Year'].max())
     payload = json.dumps(
         {'file_name': f'{ROOT_DIR}/{PREFIX}_{TIMESTAMP}.csv', 'dataset': 'QCL'})
     wake_up_service(

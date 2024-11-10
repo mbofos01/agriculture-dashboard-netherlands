@@ -65,9 +65,28 @@ def get_latest_index(directory=ROOT_DIR, prefix=PREFIX):
         return 0
 
 
+def read_fao_threshold():
+    '''
+    This function reads the FAOSTAT threshold from a file.
+
+    Returns:
+    - The FAOSTAT threshold
+    '''
+    try:
+        with open('/data/faostat_end_year.txt', 'r') as file:
+            return file.read()
+    except:
+        return None
+
+
 # Download data from CBS
 DATA = pd.DataFrame(cbsodata.get_data(DATASET))
 DATA['Regions'] = DATA['Regions'].str.strip()
+
+fao_threshold = read_fao_threshold()
+log_action(EXTRACT_SERVICE_NAME,
+           f'FAOSTAT threshold is {fao_threshold} dropping data after this year')
+DATA = DATA[DATA['Periods'] <= fao_threshold]
 
 engine = create_engine(
     "postgresql://student:infomdss@database:5432/dashboard")
