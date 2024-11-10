@@ -43,7 +43,7 @@ Our Dashboard application consists of multiple microservices that communicate wi
     
 4. Extract
     
-    The Extract microservice is the main microservice of the ETL pipeline. A cronjob is running in that container every month checking whether the datasets we use have been updated. If the datasets have been updated it acquires the new data and enables the Transform microservice.
+    The Extract microservice is the main microservice of the ETL pipeline. A cronjob is running in that container every month (as of now the frequency of the cronjob is set on 10 minutes for testing purposes) checking whether the datasets we use have been updated. If the datasets have been updated it acquires the new data and enables the Transform microservice.
     
 5. Transform
     
@@ -64,6 +64,8 @@ Our system is built to be resilient. The docker-compose file used assigns depend
 
 One aspect that may limit, but not crash, the usage of our system is the discontinuation of our datasets. In that highly unlikely scenario, the system will not crash, however, the data will not get updated. However, all of our data sources (OpenMeteo, FAOSTAT, and CBS) are well-respected and reliable, thus any discontinuation of data does not seem likely. 
 
+It is important to note that in order to keep our dashboard consistent we provide data for 2022 and predictions about 2023. That happens due to the fact that the FAOSTAT dataset haven't released yet its latest data (next official release date is on December 2024).
+
 ## Deployment
 
 Our system can be easily deployed. The sole pre-requisite software is Docker Engine, which enables virtualization. If Docker Engine is installed, the system is constructed using the docker-compose up command with the build flag set. This command should be run in the directory containing the docker-compose.yml file, which is used to build our system.
@@ -76,7 +78,9 @@ $> docker-compose up --build
 
 ## Maintenance
 
-Reducing the required maintenance was one of the principles in mind when designing our system. We used microservices in order to have structured containers with as few responsibilities as possible. All microservices have a directory of their own, while also having a README file providing information when needed. Additionally, our code is documented allowing other developers to understand and maintain it.
+Reducing the required maintenance was one of the principles in mind when designing our system. We used microservices in order to have structured containers with as few responsibilities as possible. All microservices have a directory of their own, while also having a README file providing information when needed. Additionally, our code is documented allowing other developers to understand and maintain it. 
+
+However, in order to keep your models up to date it is recommended to re-train the predictive analysis models at least once every 2 to 3 years, or whenever you observe an accuracy drop. A separate comprehensive Jupyter Notebook has been provided in order to achieve this.
 
 ### Data Sources
 
@@ -91,6 +95,10 @@ Reducing the required maintenance was one of the principles in mind when designi
 3. OpenMeteo
     
     The <a href="https://open-meteo.com/en/docs/historical-weather-api"> Historical Weather API</a> provided by OpenMeteo was used to get weather data for the Netherlands as a whole and for each province separately. 
+
+4. University of Anglia
+
+    We used legacy data from the University of Anglia regarding the weather in the Netherlands.
     
 
 ### Python Libraries
