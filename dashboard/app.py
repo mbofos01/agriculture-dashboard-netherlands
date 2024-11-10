@@ -421,7 +421,7 @@ def create_cards():
         children=[
             dbc.Card(
                 dbc.CardBody([
-                    html.H5("Average Crop Production", className="card-title"),
+                    html.H5("Average Crop Production in tons", className="card-title"),
                     html.P(f"{mean_value:.2f}", className="card-text")
                 ]),
                 # Adjust width as needed
@@ -440,7 +440,7 @@ def create_cards():
             ),
             dbc.Card(
                 dbc.CardBody([
-                    html.H5("Minimum Crop production (Year)",
+                    html.H5("Minimum Crop production in tons (Year)",
                             className="card-title"),
                     html.P(f"{min_value:.2f} ({min_year})",
                            className="card-text")
@@ -450,7 +450,7 @@ def create_cards():
             ),
             dbc.Card(
                 dbc.CardBody([
-                    html.H5("Maximum crop production (Year)",
+                    html.H5("Maximum crop production in tons (Year)",
                             className="card-title"),
                     html.P(f"{max_value:.2f} ({max_year})",
                            className="card-text")
