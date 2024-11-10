@@ -12,7 +12,7 @@ from dash import dcc, html, dash_table
 from scipy.stats import pearsonr
 from scipy.stats import gmean
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler , StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import plotly.graph_objects as go  # Import for creating the second graph
 import time
 from dash.dependencies import Input, Output
@@ -100,11 +100,13 @@ with engine.connect() as connection:
 MONTHLY_WEATHER.drop(columns=['index'], inplace=True)
 MONTHLY_WEATHER_FEATURES = MONTHLY_WEATHER.drop(columns=['Month-Year'])
 MONTHLY_WEATHER_TEST_DATA = MONTHLY_WEATHER.tail(12)
-MONTHLY_WEATHER_TEST_FEATURES = MONTHLY_WEATHER_TEST_DATA.drop(columns=['Month-Year'])
+MONTHLY_WEATHER_TEST_FEATURES = MONTHLY_WEATHER_TEST_DATA.drop(columns=[
+                                                               'Month-Year'])
 
 # Scale the data based on the saved scaler
 MONTHLY_WEATHER_SCALER = joblib.load('/app/models/scaler.pkl')
-MONTHLY_WEATHER_SCALED_TEST_FEATURES = MONTHLY_WEATHER_SCALER.transform(MONTHLY_WEATHER_TEST_FEATURES)
+MONTHLY_WEATHER_SCALED_TEST_FEATURES = MONTHLY_WEATHER_SCALER.transform(
+    MONTHLY_WEATHER_TEST_FEATURES)
 
 X_test = []
 X_test.append(MONTHLY_WEATHER_SCALED_TEST_FEATURES)
@@ -127,11 +129,11 @@ for _ in range(12):
     last_sequence = next_sequence
 
 
-
 # Convert all predictions to a DataFrame
-predictions_df = pd.DataFrame(year_predictions, columns=MONTHLY_WEATHER_FEATURES.columns)
-print(predictions_df)
-#predictions_df = predictions_df.reset_index(drop=True)
+predictions_df = pd.DataFrame(
+    year_predictions, columns=MONTHLY_WEATHER_FEATURES.columns)
+# print(predictions_df)
+# predictions_df = predictions_df.reset_index(drop=True)
 
 # Variable for Milo
 YEARLY_WEATHER_SUMMARY = predictions_df.agg({
@@ -145,9 +147,9 @@ YEARLY_WEATHER_SUMMARY = predictions_df.agg({
     'Cloud cover': 'mean',
     'Vapour pressure': 'mean'
 }).reset_index()
-print(YEARLY_WEATHER_SUMMARY)
+# print(YEARLY_WEATHER_SUMMARY)
 
-#------------------------------Milo code
+# ------------------------------Milo code
 
 # Define the correct feature order
 features_order = ['Cloud cover', 'potential evapo-transpiration', 'Precipitation rate', 'Minimum 2m temperature',
@@ -164,27 +166,26 @@ loaded_ensemble_data = joblib.load('/app/models/ensemble_models.joblib')
 
 # # Extract the models and feature subsetss for each model (it is an ensemble of 100 regressors)
 model_loaded = loaded_ensemble_data['model']
-scaler = loaded_ensemble_data['scaler'] 
+scaler = loaded_ensemble_data['scaler']
 
 df_single_row = scaler.transform(df_single_row)
 
 
-
-#these are all the crops we trained on:
+# these are all the crops we trained on:
 crops = [
-    'Poppy seed', 'Cherries', 'Grapes', 
-    'Anise, badian, coriander, cumin, caraway, fennel and juniper berries, raw', 
-    'Maize (corn)', 'Raspberries', 
-    'Other berries and fruits of the genus vaccinium n.e.c.', 'Linseed', 
-    'Currants', 'Rape or colza seed', 'Plums and sloes', 'Beans, dry', 
-    'Peas, dry', 'Broad beans and horse beans, green', 'Sour cherries', 'Rye', 
-    'Asparagus', 'Flax, raw or retted', 'Oats', 'Other vegetables, fresh n.e.c.', 
-    'Peas, green', 'Carrots and turnips', 'Cabbages', 'Barley', 
-    'Onions and shallots, dry (excluding dehydrated)', 'Apples', 'Wheat', 
+    'Poppy seed', 'Cherries', 'Grapes',
+    'Anise, badian, coriander, cumin, caraway, fennel and juniper berries, raw',
+    'Maize (corn)', 'Raspberries',
+    'Other berries and fruits of the genus vaccinium n.e.c.', 'Linseed',
+    'Currants', 'Rape or colza seed', 'Plums and sloes', 'Beans, dry',
+    'Peas, dry', 'Broad beans and horse beans, green', 'Sour cherries', 'Rye',
+    'Asparagus', 'Flax, raw or retted', 'Oats', 'Other vegetables, fresh n.e.c.',
+    'Peas, green', 'Carrots and turnips', 'Cabbages', 'Barley',
+    'Onions and shallots, dry (excluding dehydrated)', 'Apples', 'Wheat',
     'Sugar beet', 'Potatoes'
 ]
 
-# # Create the dictionary that maps crop names to their corresponding indices 
+# # Create the dictionary that maps crop names to their corresponding indices
 crop_index_dict = {crop: index for index, crop in enumerate(crops)}
 
 # Display the dictionary
@@ -192,21 +193,21 @@ crop_index_dict = {crop: index for index, crop in enumerate(crops)}
 
 def Predict_one(weather, crop):
 
-    one_hot_encoding_potatoes = np.zeros(29) 
-    one_hot_encoding_potatoes[crop] = 1  # 'Potatoes' is at index 28, so set it to 1
+    one_hot_encoding_potatoes = np.zeros(29)
+    # 'Potatoes' is at index 28, so set it to 1
+    one_hot_encoding_potatoes[crop] = 1
 
-    
-    input_data = np.concatenate([one_hot_encoding_potatoes, weather]) #concatenate one-hot encoding of crops
+    # concatenate one-hot encoding of crops
+    input_data = np.concatenate([one_hot_encoding_potatoes, weather])
     input_data = input_data.reshape(1, -1)
-    
+
     # Predict using each model in the ensemble
     y_pred = model_loaded.predict(input_data)
     y_pred = np.maximum(y_pred, 0)  # Ensure non-negative predictions
-    
+
     # Output the result
-  
-    
-    print(f"Predicted yield for {crops[crop]} in {2024}: {y_pred}")
+
+    # print(f"Predicted yield for {crops[crop]} in {2024}: {y_pred}")
     return crops[crop], y_pred
 
 
@@ -214,7 +215,7 @@ def Predict_all(weather):
     crop_arr = []
     val_arr = []
     for crop_index in range(len(crops)):
-        crop, val =Predict_one(weather, crop_index) 
+        crop, val = Predict_one(weather, crop_index)
         crop_arr.append(crop)
         val_arr.append(val)
     return crop_arr, val_arr
@@ -222,30 +223,27 @@ def Predict_all(weather):
 
 crop_arr, val_arr = Predict_all(np.array(df_single_row)[0])
 df = pd.DataFrame({'Crop': crop_arr, 'Values': val_arr})
-print(df)
-df['Values'] = df['Values'].apply(lambda x: x[0] if isinstance(x, np.ndarray)else x)
-FAOSTAT2=df
+# print(df)
+df['Values'] = df['Values'].apply(
+    lambda x: x[0] if isinstance(x, np.ndarray)else x)
+FAOSTAT2 = df
 total_value = FAOSTAT2['Values'].sum()
-#FAOSTAT2.to_csv("/app/models/dummyfaopred.csv")
+# FAOSTAT2.to_csv("/app/models/dummyfaopred.csv")
 
 
+# ------------------------------Milo code
+
+# model = load_model('/app/models/modensemble_models.joblib')
 
 
-
-#------------------------------Milo code
-
-#model = load_model('/app/models/modensemble_models.joblib')
-
-
-#DUMMY--------------------------------sp
+# DUMMY--------------------------------sp
 FAOSTAT1 = pd.DataFrame({
     'Year': [2022, 2022, 2022],
     'Product': ['Wheat', 'Rice', 'Corn'],
     'Proportion': [40, 30, 30]
 })
 FAOSTAT1 = FAOSTAT1[FAOSTAT1['Year'] == 2022]
-#DUMMY--------------------------------sp
-
+# DUMMY--------------------------------sp
 
 
 with engine.connect() as connection:
@@ -513,7 +511,7 @@ app.layout = dbc.Container(
         #         style=style  # Apply the style
         #     )
         # ], style={'padding': 10}),
-        
+
 
         # CARD PLOT GNERAL STATISTICS FOR TOTAL CROP YIELD THROUGH YEARS ############
         dbc.Container([
@@ -606,7 +604,7 @@ app.layout = dbc.Container(
                 dbc.Row(style={'justify-content': 'center'}, children=[
                     dbc.Col(
                         dcc.Dropdown(
-                            id='feature-dropdown',
+                            id='feature-dropdown-map',
                             options=[
                                 {'label': 'Minimum Temperature',
                                  'value': 'temperature_2m_min'},
@@ -820,20 +818,41 @@ app.layout = dbc.Container(
         html.Button('Back to Line Chart', id='back-button',
                     style={'display': 'none'}),  # Back button hidden initially
 
-        html.H1(children=f"Monthly weather feature predictions for {FAOSTAT['Year'].max() + 1}"),
+        html.H1(
+            children=f"Monthly weather feature predictions for {FAOSTAT['Year'].max() + 1}"),
         # Dropdown for feature selection
-        dcc.Dropdown(
-            id='feature-dropdown',
-            options=[{'label': FEATURE_NAMES[col], 'value': col} for col in predictions_df.columns[1:]],  # columns after the first one
-            value=predictions_df.columns[1],  # default value
-            clearable=False
-        ),
-        
-        # Line chart for the selected feature 
-        dcc.Graph(id='line-chart'),
-        html.H1(children=f"Yearly predicted weather features for {FAOSTAT['Year'].max() + 1}"),
+        html.Div(style={
+            'display': 'flex',
+            'justifyContent': 'center',  # Center horizontally
+            'alignItems': 'center',  # Center vertically if needed
+            'gap': '10px',  # Reduced space between dropdowns
+            'padding': '20px'  # Optional padding around the container
+        },
+            children=[
+            dcc.Dropdown(
+                id='feature-dropdown',
+                options=[{'label': FEATURE_NAMES[col], 'value': col}
+                         for col in predictions_df.columns[1:]],  # columns after the first one
+                value=predictions_df.columns[1],  # default value
+                clearable=False,
+                className='dropdown-container',
+                searchable=True,
+                style={
+                    'width': '400px',  # Increased width for better visibility
+                             'fontSize': '16px',  # Increase font size for better readability
+                                         'border': '1px solid #ccc',  # Light border
+                                         'backgroundColor': '#f9f9f9',  # Light background color
+                                         'color': '#333',  # Text color
+                },
+                optionHeight=60
+            ),]),
 
-        #--------------------- ds2024
+        # Line chart for the selected feature
+        dcc.Graph(id='line-chart'),
+        html.H1(
+            children=f"Yearly predicted weather features for {FAOSTAT['Year'].max() + 1}"),
+
+        # --------------------- ds2024
         html.Div(style={
             'display': 'flex',
             'flexDirection': 'column',
@@ -842,13 +861,15 @@ app.layout = dbc.Container(
             'padding': '30px',
             'width': '80%',
             'maxWidth': '1000px',  # Limits the maximum width for better readability
-            'backgroundColor': '#f9f9f9',  # Light background to contrast with the white container
+            # Light background to contrast with the white container
+            'backgroundColor': '#f9f9f9',
             'borderRadius': '12px',  # Slightly rounded corners for a modern look
-            'boxShadow': '0 10px 20px rgba(0, 0, 0, 0.1)',  # Softer, deeper shadow
+            # Softer, deeper shadow
+            'boxShadow': '0 10px 20px rgba(0, 0, 0, 0.1)',
             'margin': 'auto',
             'marginTop': '50px',  # Space from the top of the page
             'border': 'none',
-                     }, children=[
+        }, children=[
             html.H1("Weather Summary", style={
                 'textAlign': 'center',  # Centered title
                 'color': '#3e3e3e',  # Darker color for better readability
@@ -859,13 +880,16 @@ app.layout = dbc.Container(
             }),
             dash_table.DataTable(
                 id='weather-summary-table',
-                columns=[{'name': str(col), 'id': str(col)} for col in YEARLY_WEATHER_SUMMARY.columns],
-                data=YEARLY_WEATHER_SUMMARY.reset_index(drop=True).to_dict('records'),  # Drop the index
+                columns=[{'name': str(col), 'id': str(col)}
+                         for col in YEARLY_WEATHER_SUMMARY.columns],
+                data=YEARLY_WEATHER_SUMMARY.reset_index(
+                    drop=True).to_dict('records'),  # Drop the index
                 style_table={
                     'width': '100%',
                     'borderRadius': '8px',  # Rounded corners for the table
                     'backgroundColor': '#ffffff',
-                    'boxShadow': '0 2px 8px rgba(0, 0, 0, 0.05)',  # Subtle shadow for the table
+                    # Subtle shadow for the table
+                    'boxShadow': '0 2px 8px rgba(0, 0, 0, 0.05)',
                     'overflowX': 'auto',  # Allow horizontal scroll if necessary
                 },
                 style_cell={
@@ -891,48 +915,43 @@ app.layout = dbc.Container(
         ]),
 
 
-        #--------------------- ds2024
+        # --------------------- ds2024
         html.H1(
             children=f"Predictions Crop Production for {FAOSTAT['Year'].max() + 1}",
             style={'text-align': 'center'}  # Center the H1 title itself
         ),
-        dcc.Graph(
-            id='faostat-pie-chart',
-            figure=px.pie(
-                FAOSTAT2, 
-                names='Crop', 
-                values='Values', 
-                title='Crop production in tons'
-            ).update_layout(
-                title_x=0.5,
-                annotations=[
-                    {
-                        'text': f"Total<br>{total_value}",  # Use line break for multi-line text
-                        'showarrow': False,
-                        'font': {'size': 20, 'color': 'black'},  # Adjust font size and color
-                        'align': 'center',
-                        'x': 0.5, 
-                        'y': 0.5,
-                        'xref': 'paper',
-                        'yref': 'paper',
-                        'bgcolor': 'white',  # Background color for the white square
-                        'bordercolor': 'black',
-                        'borderwidth': 2,
-                        'borderpad': 10  # Padding inside the white square
-                    }
-                ]
-            ),
-            style={'width': '1100px', 'height': '1100px'}  # Adjust the width and height as needed
-        ),
-
-        
-
-
-        
-
-        
-
-
+        html.Div(children=[
+            dcc.Graph(
+                id='faostat-pie-chart',
+                figure=px.pie(
+                    FAOSTAT2,
+                    names='Crop',
+                    values='Values',
+                    title='Crop production in tons'
+                ).update_layout(
+                    title_x=0.5,
+                    annotations=[
+                        {
+                            # Use line break for multi-line text
+                            'text': f"Total<br>{total_value}",
+                            'showarrow': False,
+                            # Adjust font size and color
+                            'font': {'size': 20, 'color': 'black'},
+                            'align': 'center',
+                            'x': 0.5,
+                            'y': 0.5,
+                            'xref': 'paper',
+                            'yref': 'paper',
+                            'bgcolor': 'white',  # Background color for the white square
+                            'bordercolor': 'black',
+                            'borderwidth': 2,
+                            'borderpad': 10  # Padding inside the white square
+                        }
+                    ]
+                ),
+                # Adjust the width and height as needed
+                style={'height': '800px'}
+            ),]),
 
         # TOP MOST PRODUCED CROPS IN NETHERLANDS AND TOP MOST CORRELATE WEATHER ATTRIBUTES ##################################
         html.Div(style={
@@ -1201,10 +1220,12 @@ def toggle_pie_chart(clickData, n_clicks, line_graph_style, current_step_data):
 
     return {'display': 'block'}, {}, {'display': 'none'}, {'display': 'none'}, "Click on a point in the line graph to see the crop distribution for that year."
 
+
 # --------------------------------------------------------------------------------sp
 # List of month names for labeling
-months = ["January", "February", "March", "April", "May", "June", "July", "August", 
+months = ["January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December"]
+
 
 @app.callback(
     Output('line-chart', 'figure'),
@@ -1212,7 +1233,8 @@ months = ["January", "February", "March", "April", "May", "June", "July", "Augus
 )
 def update_line_chart(selected_feature):
     # Ensure the x-axis labels are months
-    x_labels = months * (len(predictions_df) // 12) + months[:len(predictions_df) % 12]
+    x_labels = months * (len(predictions_df) // 12) + \
+        months[:len(predictions_df) % 12]
 
     # Create the line chart
     fig = px.line(
@@ -1221,14 +1243,15 @@ def update_line_chart(selected_feature):
         y=selected_feature,
         title=f'{selected_feature} over Months'
     )
-    fig.update_traces( mode="lines+markers")  # Add purple line and points
+    fig.update_traces(mode="lines+markers")  # Add purple line and points
     fig.update_layout(xaxis_title="Month", yaxis_title=selected_feature)
     return fig
-#---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+
 
 @app.callback(
     Output('feature-graph', 'figure'),
-    Input('feature-dropdown', 'value'),
+    Input('feature-dropdown-map', 'value'),
     Input('selected-year', 'data'),
     Input('province-name', 'data'),
 )
