@@ -940,7 +940,7 @@ app.layout = dbc.Container(
                     ]
                 ),
                 # Adjust the width and height as needed
-                style={'height': '800px'}
+                style={'height': '950px'}
             ),]),
 
         # TOP MOST PRODUCED CROPS IN NETHERLANDS AND TOP MOST CORRELATE WEATHER ATTRIBUTES ##################################
