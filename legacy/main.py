@@ -154,8 +154,6 @@ FILENAME = '/data/weather/merged_data.csv'
 merged_df = merged_df.drop(columns="Diurnal Temperature Range")
 merged_df.to_csv(FILENAME, index=False)
 
-merged_df.to_csv(GOAL_FILE_MONTHLY, index=False)
-load_monthly_data_to_database(GOAL_FILE_MONTHLY)
 # print(merged_df.columns)
 # -------------------------------------------------------------------------------------
 # FILTER FROM 1961 AND LATES AND CALCULATE THE AVERAGE
@@ -166,6 +164,11 @@ merged_df['Year'] = merged_df['Month-Year'].str.extract(
 # Filter the data to keep only records from 1961 and onwards
 df_filtered = merged_df[(merged_df['Year'] >= 1961)
                         & (merged_df['Year'] <= 2022)]
+
+temp_df = df_filtered.copy()
+temp_df = temp_df.drop(columns=['Year'])
+temp_df.to_csv(GOAL_FILE_MONTHLY, index=False)
+load_monthly_data_to_database(GOAL_FILE_MONTHLY)
 
 # Drop the 'Month-Year' column as it's no longer needed
 df_filtered = df_filtered.drop(columns=['Month-Year'])
