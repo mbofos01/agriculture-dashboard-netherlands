@@ -8,6 +8,7 @@ from IPython.display import display, HTML
 from dash.dash_table import DataTable
 import dash_bootstrap_components as dbc
 from dash import dcc, html, dash_table
+from dash.dash_table.Format import Format, Scheme
 
 from scipy.stats import pearsonr
 from scipy.stats import gmean
@@ -878,36 +879,27 @@ app.layout = dbc.Container(
             }),
             dash_table.DataTable(
                 id='weather-summary-table',
-                columns=[{'name': str(col), 'id': str(col)}
+                columns=[{'name': str(col), 'id': str(col), 'type': 'numeric',  'format': Format(precision=3, scheme=Scheme.fixed)}
                          for col in YEARLY_WEATHER_SUMMARY.columns],
                 data=YEARLY_WEATHER_SUMMARY.reset_index(
                     drop=True).to_dict('records'),  # Drop the index
+                style_as_list_view=True,
                 style_table={
-                    'width': '100%',
-                    'borderRadius': '8px',  # Rounded corners for the table
-                    'backgroundColor': '#ffffff',
-                    # Subtle shadow for the table
-                    'boxShadow': '0 2px 8px rgba(0, 0, 0, 0.05)',
-                    'overflowX': 'auto',  # Allow horizontal scroll if necessary
+                    'overflowX': 'auto'
                 },
                 style_cell={
-                    'textAlign': 'center',  # Center-align the text in the table
-                    'padding': '10px',  # Add some padding for spacing
-                    'fontSize': '14px',  # Set a readable font size
+                    'padding': '10px',  # Spacing inside cells
+                    'textAlign': 'left',
                     'fontFamily': 'Arial, sans-serif',
-                    'color': '#4a4a4a',  # Slightly lighter color for table text
+                    'fontSize': '14px',
+                    'backgroundColor': '#f9f9f9',
+                    'border': 'none'
                 },
                 style_header={
                     'display': 'none'
-                    # 'backgroundColor': '#e3e3e3',  # Light gray header
-                    # 'fontWeight': 'bold',
-                    # 'textAlign': 'center',
-                    # 'fontSize': '16px',
-                    # 'color': '#333',
-                    # 'borderBottom': '2px solid #ccc'  # Light border at the bottom of the header
                 },
                 style_data={
-                    'borderBottom': '1px solid #ddd',  # Subtle borders between rows
+                    'borderBottom': '3px solid #ddd'
                 }
             )
         ]),
