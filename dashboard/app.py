@@ -879,8 +879,8 @@ app.layout = dbc.Container(
             }),
             dash_table.DataTable(
                 id='weather-summary-table',
-                columns=[{'name': str(col), 'id': str(col), 'type': 'numeric',  'format': Format(precision=3, scheme=Scheme.fixed)}
-                         for col in YEARLY_WEATHER_SUMMARY.columns],
+                columns=[{'name': col, 'id': col, 'type': 'numeric',  'format': Format(precision=3, scheme=Scheme.fixed)}
+                         for col in YEARLY_WEATHER_SUMMARY],
                 data=YEARLY_WEATHER_SUMMARY.reset_index(
                     drop=True).to_dict('records'),  # Drop the index
                 style_as_list_view=True,
@@ -1062,7 +1062,7 @@ def update_yield_graph(selected_feature, selected_item):
     fig.update_layout(title=f"{FEATURE_NAMES[selected_feature]} and {selected_item} over Time",
                       xaxis_title="Year",
                       yaxis_title=selected_feature,
-                      yaxis2=dict(title=selected_item,
+                      yaxis2=dict(title=f"{selected_item} in tons",
                                   overlaying='y', side='right'),
                       barmode='group')  # Set barmode to 'group'
 
@@ -1231,7 +1231,7 @@ def update_line_chart(selected_feature):
         predictions_df,
         x=x_labels,  # Use the mapped month names
         y=selected_feature,
-        title=f'{selected_feature} over Months'
+        title=f'{FEATURE_NAMES[selected_feature]} over Months'
     )
     fig.update_traces(mode="lines+markers")  # Add purple line and points
     fig.update_layout(xaxis_title="Month", yaxis_title=selected_feature)
