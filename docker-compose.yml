@@ -131,7 +131,7 @@ services:
       - TRANSFORM_QUEUE=transform_queue
       - SERVER_QUEUE=server_queue
       - DATABASE_URL=postgresql://student:infomdss@database:5432/dashboard
-      - DEBUG=1 # 1 for debugging, 0 for production
+      - DEBUG=0 # 1 for debugging, 0 for production
     ports:
       - 8050:8050
     volumes:

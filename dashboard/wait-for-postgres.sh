@@ -31,7 +31,7 @@ wait_for_table() {
     local table_name="$1"
     until PGPASSWORD=infomdss psql -h "database" -U "student" -d "dashboard" -c "SELECT 1 FROM \"$table_name\" LIMIT 1;" &> /dev/null; do
         log_with_timestamp "Waiting for $table_name table to be created in PostgreSQL..."
-        sleep 60
+        sleep 10
     done
     log_with_timestamp "$table_name table has been created"
 }
