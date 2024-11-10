@@ -137,7 +137,7 @@ services:
     volumes:
       - ./data:/data
       - ./dashboard/:/app/
-      - ./models/:/app/models
+      - ./models/:/models
     deploy:
       restart_policy:
         condition: on-failure

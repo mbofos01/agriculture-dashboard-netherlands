@@ -83,9 +83,7 @@ FAOSTAT = None
 CBS = None
 yearly_average_merged_data = None
 
-# Read models TODO: use in functions
-
-model = load_model('/app/models/model.keras')
+model = load_model('/models/model.keras')
 MONTHLY_WEATHER = None
 with engine.connect() as connection:
     # QCL is in quotes because of case sensitivity
@@ -104,7 +102,7 @@ MONTHLY_WEATHER_TEST_FEATURES = MONTHLY_WEATHER_TEST_DATA.drop(columns=[
                                                                'Month-Year'])
 
 # Scale the data based on the saved scaler
-MONTHLY_WEATHER_SCALER = joblib.load('/app/models/scaler.pkl')
+MONTHLY_WEATHER_SCALER = joblib.load('/models/scaler.pkl')
 MONTHLY_WEATHER_SCALED_TEST_FEATURES = MONTHLY_WEATHER_SCALER.transform(
     MONTHLY_WEATHER_TEST_FEATURES)
 
@@ -162,7 +160,7 @@ ordered_values = [feature_dict[feature] for feature in features_order]
 df_single_row = pd.DataFrame([ordered_values])
 
 # Load the trained  model
-loaded_ensemble_data = joblib.load('/app/models/ensemble_models.joblib')
+loaded_ensemble_data = joblib.load('/models/ensemble_models.joblib')
 
 # # Extract the models and feature subsetss for each model (it is an ensemble of 100 regressors)
 model_loaded = loaded_ensemble_data['model']
@@ -228,12 +226,12 @@ df['Values'] = df['Values'].apply(
     lambda x: x[0] if isinstance(x, np.ndarray)else x)
 FAOSTAT2 = df
 total_value = FAOSTAT2['Values'].sum()
-# FAOSTAT2.to_csv("/app/models/dummyfaopred.csv")
+# FAOSTAT2.to_csv("/models/dummyfaopred.csv")
 
 
 # ------------------------------Milo code
 
-# model = load_model('/app/models/modensemble_models.joblib')
+# model = load_model('/models/modensemble_models.joblib')
 
 
 # DUMMY--------------------------------sp
