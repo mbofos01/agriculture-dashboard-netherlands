@@ -1,6 +1,18 @@
-# Deployment Report
+# Agriculture Dashboard
 
-Our Dashboard application consists of multiple microservices that communicate with each other. The architecture of our system is shown in Figure []. Each block represents a microservice (a Docker container that serves a purpose on our system). We can easily observe that the ETL process is broken down into three distinct microservices.
+## How to build
+
+```bash
+
+$ docker-compose up --build
+
+```
+
+After building is over you can visit http://localhost:8050 to view our dashboard.
+
+## Structure
+
+Our Dashboard application consists of multiple microservices that communicate with each other. The architecture of our system is shown in the following figure. Each block represents a microservice (a Docker container that serves a purpose on our system). We can easily observe that the ETL process is broken down into three distinct microservices.
 
 ```mermaid
  graph TD
@@ -57,54 +69,3 @@ Our Dashboard application consists of multiple microservices that communicate wi
     
     Our server is built using the Dash Python framework, which in turn is built upon the Flask micro web framework. Our server starts when all used tables are present in the Database. Then the latest data are loaded and used. The utilized data are reloaded only when new data are available - that mechanism was implemented to reduce the number of times any formatting process was running. 
     
-
-## Limitations
-
-Our system is built to be resilient. The docker-compose file used assigns dependabilities that help our system to not crash. For example, all microservices that use RabbitMQ to communicate with each other will only start after it is up and healthy (the built-in rabbitmq-diagnostics method is used to determine health). All dependencies can be seen in Figure. In the case of Database health, our Database is considered healthy using the built-in ‘pg_isready’ method. For all our microservices we defined the necessary libraries alongside their versions.
-
-One aspect that may limit, but not crash, the usage of our system is the discontinuation of our datasets. In that highly unlikely scenario, the system will not crash, however, the data will not get updated. However, all of our data sources (OpenMeteo, FAOSTAT, and CBS) are well-respected and reliable, thus any discontinuation of data does not seem likely. 
-
-It is important to note that in order to keep our dashboard consistent we provide data for 2022 and predictions about 2023. That happens due to the fact that the FAOSTAT dataset haven't released yet its latest data (next official release date is on December 2024).
-
-## Deployment
-
-Our system can be easily deployed. The sole pre-requisite software is Docker Engine, which enables virtualization. If Docker Engine is installed, the system is constructed using the docker-compose up command with the build flag set. This command should be run in the directory containing the docker-compose.yml file, which is used to build our system.
-
-```bash
-$> docker-compose up --build
-```
-
- The system is not so complex to require the use of Kubernetes or any other orchestration system. However, if in the future our system scales up dramatically, migrating to Kubernetes is possible.
-
-## Maintenance
-
-Reducing the required maintenance was one of the principles in mind when designing our system. We used microservices in order to have structured containers with as few responsibilities as possible. All microservices have a directory of their own, while also having a README file providing information when needed. Additionally, our code is documented allowing other developers to understand and maintain it. 
-
-However, in order to keep your models up to date it is recommended to re-train the predictive analysis models at least once every 2 to 3 years, or whenever you observe an accuracy drop. A separate comprehensive Jupyter Notebook has been provided in order to achieve this.
-
-### Data Sources
-
-1. FAOSTAT
-    
-    The <a href="https://pypi.org/project/faostat/"> official FAOSTAT Python library</a> was used to get up-to-date data regarding crop production.
-    
-2. CBS
-    
-    The <a href="https://pypi.org/project/cbsodata/"> official CBS Python library</a> was used to get up-to-date data regarding crop production in specific provinces of the Netherlands.
-    
-3. OpenMeteo
-    
-    The <a href="https://open-meteo.com/en/docs/historical-weather-api"> Historical Weather API</a> provided by OpenMeteo was used to get weather data for the Netherlands as a whole and for each province separately. 
-
-4. University of Anglia
-
-    We used legacy data from the University of Anglia regarding the weather in the Netherlands.
-    
-
-### Python Libraries
-
-Each microservice includes a requirements.txt file that lists which Python modules are installed and their versions. The files can be found in the Appendix. Another essential detail is that each microservice has a specific Python version installed. The base image for all ETL containers is python:3.9-slim, while the base image for the Server container is python:3.11.
-
-### Training
-
-No special training is necessary to utilize our system. A sophisticated logging feature has been developed, offering explanations of what is happening at all times. Our system is available via any web browser (<a href="http://localhost:8050">through port 8050</a>), and no prior knowledge or training is required to use it.
