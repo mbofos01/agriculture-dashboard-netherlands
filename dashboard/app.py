@@ -907,7 +907,7 @@ app.layout = dbc.Container(
 
         # --------------------- ds2024
         html.H1(
-            children=f"Predictions Crop Production for {FAOSTAT['Year'].max() + 1}",
+            children=f"Predictions of Crop Production for {FAOSTAT['Year'].max() + 1}",
             style={'text-align': 'center'}  # Center the H1 title itself
         ),
         html.Div(children=[
