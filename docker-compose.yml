@@ -136,7 +136,6 @@ services:
       - 8050:8050
     volumes:
       - ./data:/data
-      - ./dashboard/:/app/
       - ./models/:/models
     deploy:
       restart_policy:
