@@ -16,42 +16,53 @@ Our Dashboard application consists of multiple microservices that communicate wi
 
 ```mermaid
     graph BT
-    rabbitmq["<b>rabbitmq</b><br/><small>v3-management</small>"]
-    database["<b>database</b><br/><small>postgres:</small><small>9.0.19 (latest)</small>"]
-    extract["<b>extract</b><br/><small>python:3.9-slim</small>"]
-    transform["<b>transform</b><br/><small>python:3.9-slim</small>"]
-    load["<b>load</b><br/><small>python:3.9-slim</small>"]
-    dashboard["<b>dashboard</b><br/><small>python:3.11</small>"]
-    legacy["<b>legacy</b><br/><small>python:3.11-slim</small>"]
+    subgraph Network_web[<b>Network: web</b>]
+        rabbitmq["<b>rabbitmq</b>"]
+        database["<b>database</b>"]
+        extract["<b>extract</b>"]
+        transform["<b>transform</b>"]
+        load["<b>load</b>"]
+        dashboard["<b>dashboard</b>"]
+        legacy["<b>legacy</b>"]
+    end
+    style Network_web fill:#e4c981ff
+    rabbitmq["<b>rabbitmq</b>"]
+    database["<b>database</b>"]
+    extract["<b>extract</b>"]
+    transform["<b>transform</b>"]
+    load["<b>load</b>"]
+    dashboard["<b>dashboard</b>"]
+    legacy["<b>legacy</b>"]
     extract -- depends_on (service_healthy) --> rabbitmq
-    linkStyle 0 stroke-width:2,stroke-dasharray:0
+    linkStyle 0 stroke-width:2,stroke-dasharray:5 5
     extract -- depends_on (service_started) --> transform
-    linkStyle 1 stroke-width:2,stroke-dasharray:0
+    linkStyle 1 stroke-width:2,stroke-dasharray:
     transform -- depends_on (service_healthy) --> rabbitmq
-    linkStyle 2 stroke-width:2,stroke-dasharray:0
+    linkStyle 2 stroke-width:2,stroke-dasharray:5 5
     transform -- depends_on (service_started) --> load
-    linkStyle 3 stroke-width:2,stroke-dasharray:0
+    linkStyle 3 stroke-width:2,stroke-dasharray:
     load -- depends_on (service_healthy) --> rabbitmq
-    linkStyle 4 stroke-width:2,stroke-dasharray:0
+    linkStyle 4 stroke-width:2,stroke-dasharray:5 5
     dashboard -- depends_on (service_healthy) --> rabbitmq
-    linkStyle 5 stroke-width:2,stroke-dasharray:0
+    linkStyle 5 stroke-width:2,stroke-dasharray:5 5
     dashboard -- depends_on (service_started) --> database
-    linkStyle 6 stroke-width:2,stroke-dasharray:0
+    linkStyle 6 stroke-width:2,stroke-dasharray:
     dashboard -- depends_on (service_started) --> load
-    linkStyle 7 stroke-width:2,stroke-dasharray:0
+    linkStyle 7 stroke-width:2,stroke-dasharray:
     dashboard -- depends_on (service_started) --> transform
-    linkStyle 8 stroke-width:2,stroke-dasharray:0
+    linkStyle 8 stroke-width:2,stroke-dasharray:
     dashboard -- depends_on (service_started) --> extract
-    linkStyle 9 stroke-width:2,stroke-dasharray:0
+    linkStyle 9 stroke-width:2,stroke-dasharray:
     legacy -- depends_on (service_healthy) --> database
-    linkStyle 10 stroke-width:2,stroke-dasharray:0
-    style rabbitmq fill:#C8E6C9,stroke:#4CAF50,stroke-width:2,stroke-dasharray:0
-    style database fill:#C8E6C9,stroke:#4CAF50,stroke-width:2,stroke-dasharray:0
-    style extract fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
-    style transform fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
-    style load fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
-    style dashboard fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
-    style legacy fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
+    linkStyle 10 stroke-width:2,stroke-dasharray:5 5
+    style rabbitmq fill:#d89e87ff,stroke:#f16026ff,stroke-width:3,stroke-dasharray:0
+    style database fill:#879ad8ff,stroke:#265cf1ff,stroke-width:3,stroke-dasharray:0
+    style extract fill:#87d89fff,stroke:#4fca43ff,stroke-width:3,stroke-dasharray:0
+    style transform fill:#d887d8ff,stroke:#ca43bfff,stroke-width:3,stroke-dasharray:0
+    style load fill:#ad87d8ff,stroke:#6c43caff,stroke-width:3,stroke-dasharray:0
+    style dashboard fill:#d88787ff,stroke:#ca4343ff,stroke-width:3,stroke-dasharray:0
+    style legacy fill:#e2cfcfff,stroke:#000000ff,stroke-width:3,stroke-dasharray:0
+
 ```
 
 ## Microservices
