@@ -1,3 +1,18 @@
+x-wharfmap:
+  conditions:
+    service_healthy:
+      # stroke: "#000000ff"
+      stroke-width: "2px"
+      stroke-dasharray: "5 5"
+      # color: "#000000ff"
+  networks:
+    web:
+      stroke: " #be9302ff"
+      stroke-width: "0px"
+      stroke-dasharray: "5 5"
+      color: "#e4c981ff"
+
+
 services:
   rabbitmq:
     container_name: rabbitmq
@@ -16,6 +31,13 @@ services:
       # Disable logging
       RABBITMQ_LOGS: "/dev/null"
       RABBITMQ_LOG_LEVEL: "none"
+    networks:
+      - web
+    x-wharfmap:
+      color: "#d89e87ff"
+      border-color: "#f16026ff"
+      border-width: "3px"
+      border-style: "solid"
 
   database:
     image: postgres
@@ -35,6 +57,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - web
+    x-wharfmap:
+      color: "#879ad8ff"
+      border-color: "#265cf1ff"
+      border-width: "3px"
+      border-style: "solid"
 
   extract:
     container_name: extract
@@ -59,6 +88,13 @@ services:
     volumes:
       - ./data:/data
       - ./communication/:/app/communication
+    networks:
+      - web
+    x-wharfmap:
+      color: "#87d89fff"
+      border-color: "#4fca43ff"
+      border-width: "3px"
+      border-style: "solid"
 
   transform:
     container_name: transform
@@ -83,6 +119,13 @@ services:
     volumes:
       - ./data:/data
       - ./communication/:/app/communication
+    networks:
+      - web
+    x-wharfmap:
+      color: "#d887d8ff"
+      border-color: "#ca43bfff"
+      border-width: "3px"
+      border-style: "solid"
 
   load:
     container_name: load
@@ -105,6 +148,13 @@ services:
     volumes:
       - ./data:/data
       - ./communication/:/app/communication
+    networks:
+      - web
+    x-wharfmap:
+      color: "#ad87d8ff"
+      border-color: "#6c43caff"
+      border-width: "3px"
+      border-style: "solid"
 
   server:
     container_name: dashboard
@@ -141,6 +191,13 @@ services:
       restart_policy:
         condition: on-failure
         max_attempts: 3
+    networks:
+      - web
+    x-wharfmap:
+      color: "#d88787ff"
+      border-color: "#ca4343ff"
+      border-width: "3px"
+      border-style: "solid"
 
   legacy:
     container_name: legacy
@@ -151,8 +208,19 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    networks:
+      - web
+    x-wharfmap:
+      color: "#e2cfcfff"
+      border-color: "#000000ff"
+      border-width: "3px"
+      border-style: "solid"
       
 volumes:
   data:
   communication:
   db_dashboard-data:
+
+networks:
+  web:
+    driver: bridge

@@ -15,28 +15,43 @@ After building is over you can visit http://localhost:8050 to view our dashboard
 Our Dashboard application consists of multiple microservices that communicate with each other. The architecture of our system is shown in the following figure. Each block represents a microservice (a Docker container that serves a purpose on our system). We can easily observe that the ETL process is broken down into three distinct microservices.
 
 ```mermaid
- graph TD
-        legacy -->|depends_on: service_healthy| database
-      
-        extract -->|depends_on: service_healthy| rabbitmq
-        extract -->|depends_on: service_started| transform
-        transform -->|depends_on: service_healthy| rabbitmq
-        transform -->|depends_on: service_started| load
-        load -->|depends_on: service_healthy| rabbitmq
-        server -->|depends_on: service_healthy| rabbitmq
-        server -->|depends_on: service_started| database
-        server -->|depends_on: service_started| load
-        server -->|depends_on: service_started| transform
-        server -->|depends_on: service_started| extract
-
-
-      style rabbitmq fill:#FF0000,stroke:#333,stroke-width:2px,color:#000;
-      style extract fill:#50C878,stroke:#333,stroke-width:2px,color:#000;
-      style transform fill:#e1c751,stroke:#333,stroke-width:2px,color:#000;
-      style load fill:#6588d0,stroke:#333,stroke-width:2px,color:#000;
-      style database fill:#008bb9,stroke:#333,stroke-width:2px,color:#000;
-      style server fill:#f4ce8d,stroke:#333,stroke-width:2px,color:#000;
-      style legacy fill:#8f5ec4,stroke:#333,stroke-width:2px,color:#000;
+    graph BT
+    rabbitmq["<b>rabbitmq</b><br/><small>v3-management</small>"]
+    database["<b>database</b><br/><small>postgres:</small><small>9.0.19 (latest)</small>"]
+    extract["<b>extract</b><br/><small>python:3.9-slim</small>"]
+    transform["<b>transform</b><br/><small>python:3.9-slim</small>"]
+    load["<b>load</b><br/><small>python:3.9-slim</small>"]
+    dashboard["<b>dashboard</b><br/><small>python:3.11</small>"]
+    legacy["<b>legacy</b><br/><small>python:3.11-slim</small>"]
+    extract -- depends_on (service_healthy) --> rabbitmq
+    linkStyle 0 stroke-width:2,stroke-dasharray:0
+    extract -- depends_on (service_started) --> transform
+    linkStyle 1 stroke-width:2,stroke-dasharray:0
+    transform -- depends_on (service_healthy) --> rabbitmq
+    linkStyle 2 stroke-width:2,stroke-dasharray:0
+    transform -- depends_on (service_started) --> load
+    linkStyle 3 stroke-width:2,stroke-dasharray:0
+    load -- depends_on (service_healthy) --> rabbitmq
+    linkStyle 4 stroke-width:2,stroke-dasharray:0
+    dashboard -- depends_on (service_healthy) --> rabbitmq
+    linkStyle 5 stroke-width:2,stroke-dasharray:0
+    dashboard -- depends_on (service_started) --> database
+    linkStyle 6 stroke-width:2,stroke-dasharray:0
+    dashboard -- depends_on (service_started) --> load
+    linkStyle 7 stroke-width:2,stroke-dasharray:0
+    dashboard -- depends_on (service_started) --> transform
+    linkStyle 8 stroke-width:2,stroke-dasharray:0
+    dashboard -- depends_on (service_started) --> extract
+    linkStyle 9 stroke-width:2,stroke-dasharray:0
+    legacy -- depends_on (service_healthy) --> database
+    linkStyle 10 stroke-width:2,stroke-dasharray:0
+    style rabbitmq fill:#C8E6C9,stroke:#4CAF50,stroke-width:2,stroke-dasharray:0
+    style database fill:#C8E6C9,stroke:#4CAF50,stroke-width:2,stroke-dasharray:0
+    style extract fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
+    style transform fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
+    style load fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
+    style dashboard fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
+    style legacy fill:#FFE0B2,stroke:#FF5722,stroke-width:2,stroke-dasharray:0
 ```
 
 ## Microservices
