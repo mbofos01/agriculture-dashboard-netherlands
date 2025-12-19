@@ -15,6 +15,7 @@ After building is over you can visit http://localhost:8050 to view our dashboard
 Our Dashboard application consists of multiple microservices that communicate with each other. The architecture of our system is shown in the following figure. Each block represents a microservice (a Docker container that serves a purpose on our system). We can easily observe that the ETL process is broken down into three distinct microservices.
 
 ```mermaid
+%%{init: {"theme": "default", "themeVariables": {"background":"#ffffff"}}}%%
     graph BT
     subgraph Network_web[<b>Network: web</b>]
         rabbitmq["<b>rabbitmq</b>"]
